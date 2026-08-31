@@ -24,8 +24,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NRT ⇄ HND Transfers — Reservation",
+  title: "Goal International Co., Ltd",
   description: "Reserve a private airport pickup across Tokyo.",
+  icons: "/goal-intl-logo.png"
 };
 
 export default function RootLayout({
