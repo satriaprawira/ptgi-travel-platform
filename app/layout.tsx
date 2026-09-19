@@ -26,7 +26,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Goal International Co., Ltd",
   description: "Reserve a private airport pickup across Tokyo.",
-  icons: "/goal-intl-logo.png"
+  icons: "/logo/goal-intl-logo.png"
 };
 
 export default function RootLayout({

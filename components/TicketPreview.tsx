@@ -52,7 +52,7 @@ export default function TicketPreview({
     <aside className="ticket-col">
       <div className="ticket">
         <div className="ticket-top">
-          <div className="ticket-brand">NRT ⇄ HND · E-Ticket preview</div>
+          <div className="ticket-brand">Your E-Ticket preview</div>
           <div className="ticket-passenger">
             Passenger
             <span>{passengerLabel}</span>
