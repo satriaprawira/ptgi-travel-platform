@@ -25,8 +25,14 @@ export default function LoginForm() {
     <div className={styles.authPage}>
       <div className={styles.brandPanel}>
         <div className={styles.brand}>
-          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-             <image href="/logo/goal-intl-logo.png" width="60" height="60"/>
+          <svg width="20" height="20" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+            <circle cx="13" cy="13" r="12" stroke="#fff" strokeWidth="1.4" />
+            <path d="M13 4v18M4 13h18" stroke="#fff" strokeWidth="1.4" />
+            <path
+              d="M13 4c3 2.5 4.6 6 4.6 9s-1.6 6.5-4.6 9c-3-2.5-4.6-6-4.6-9S10 6.5 13 4z"
+              stroke="#C9462C"
+              strokeWidth="1.4"
+            />
           </svg>
           Goal International Co., Ltd
         </div>
