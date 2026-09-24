@@ -1,0 +1,41 @@
+{
+  "name": "ptgi-travel-platform-api",
+  "version": "0.1.0",
+  "description": "NestJS backend for the PT. Goal International travel platform",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "migrate:create": "node-pg-migrate create --migrations-dir database/migrations --migration-file-language sql",
+    "migrate:up": "node --env-file-if-exists=.env ./node_modules/.bin/node-pg-migrate up --migrations-dir database/migrations --database-url-var DATABASE_URL_DIRECT",
+    "migrate:down": "node --env-file-if-exists=.env ./node_modules/.bin/node-pg-migrate down --migrations-dir database/migrations --database-url-var DATABASE_URL_DIRECT"
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/config": "^12.0.0",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/platform-express": "^12.0.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.0",
+    "@nestjs/schematics": "^12.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "node-pg-migrate": "^9.0.0",
+    "source-map-support": "^0.5.21",
+    "typescript": "^6.0.2"
+  }
+}
