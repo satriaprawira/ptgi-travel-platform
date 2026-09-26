@@ -57,9 +57,27 @@ database/migrations/    SQL migrations
 src/
   main.ts               global prefix /v1, validation pipe, CORS, shutdown hooks
   config/               environment schema and validation
-  database/             pg Pool (DatabaseService: query, transaction)
+  common/               AdminAuthGuard, shared DTO transforms
+  database/             pg Pool (DatabaseService: query, transaction), Postgres error + PATCH SET helpers
   health/               GET /v1/health
+  vehicles/             fleet vehicles + vehicle classes (admin)
+  drivers/              drivers and their assigned vehicle (admin)
 ```
 
 Conventions: SQL lives in `*.repository.ts` files and is always parameterized (`$1, $2, ...`); see
 section 7.1 of the design doc.
+
+## Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/v1/health` | Public |
+| GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
+| GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
+| GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its driver. Status `retired` keeps history instead |
+| GET, POST | `/v1/admin/drivers` | Optional `vehicleId`; a vehicle belongs to one driver at most (409) |
+| GET, PATCH, DELETE | `/v1/admin/drivers/:id` | `vehicleId: null` unassigns. New assignments to a retired vehicle → 422 |
+
+All `/v1/admin/*` routes go through `AdminAuthGuard`: with no auth provider chosen yet, they answer 401
+unless `AUTH_DISABLED=true`, which only development accepts. PATCH bodies are partial; omitted fields are
+left alone, `null` is accepted only for the nullable `licenseNumber` and `vehicleId`.

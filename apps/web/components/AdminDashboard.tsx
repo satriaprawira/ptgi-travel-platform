@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./AdminDashboard.module.css";
+import DriverManagement from "./admin/DriverManagement";
+import VehicleManagement from "./admin/VehicleManagement";
+import { PanelHead, badgeClass } from "./admin/ui";
 import {
   adminUsers,
   bookings,
-  drivers,
   highSeasonRows,
   modalForms,
   notificationTemplates,
@@ -13,9 +15,7 @@ import {
   scheduleAxis,
   surchargeRows,
   todaySchedule,
-  vehicles,
   waitlist,
-  type BadgeVariant,
   type ModalKind,
 } from "@/lib/adminData";
 
@@ -188,15 +188,14 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
     title: "Availability & Waitlist",
     description: "Today's driver and vehicle schedule, plus bookings waiting for a slot to open up.",
   },
+  // Live panels (data from the API): they render their own head and "Add" action.
   drivers: {
     title: "Driver Management",
     description: "Driver roster, contact details, and current assignment status.",
-    action: { label: "+ Add Driver", kind: "driver" },
   },
   vehicles: {
     title: "Vehicle Management",
     description: "Fleet records – type, plate, capacity, and current condition.",
-    action: { label: "+ Add Vehicle", kind: "vehicle" },
   },
   pricing: {
     title: "Service Pricing Package",
@@ -224,15 +223,7 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
 };
 
-function badgeClass(variant: BadgeVariant) {
-  const variantClass = {
-    indigo: styles.badgeIndigo,
-    accent: styles.badgeAccent,
-    success: styles.badgeSuccess,
-    muted: styles.badgeMuted,
-  }[variant];
-  return `${styles.badge} ${variantClass}`;
-}
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles"]);
 
 export default function AdminDashboard() {
   const [activePanel, setActivePanel] = useState<PanelId>("bookings");
@@ -324,17 +315,19 @@ export default function AdminDashboard() {
 
         <main className={styles.content}>
           <section className={styles.panel} key={activePanel}>
-            <div className={styles.panelHead}>
-              <div>
-                <h1>{meta.title}</h1>
-                <p>{meta.description}</p>
-              </div>
-              {meta.action && (
-                <button className={styles.btnPrimary} onClick={() => setModalKind(meta.action!.kind)}>
-                  {meta.action.label}
-                </button>
-              )}
-            </div>
+            {!LIVE_PANELS.has(activePanel) && (
+              <PanelHead
+                title={meta.title}
+                description={meta.description}
+                action={
+                  meta.action && (
+                    <button className={styles.btnPrimary} onClick={() => setModalKind(meta.action!.kind)}>
+                      {meta.action.label}
+                    </button>
+                  )
+                }
+              />
+            )}
 
             {activePanel === "bookings" && (
               <>
@@ -474,75 +467,11 @@ export default function AdminDashboard() {
             )}
 
             {activePanel === "drivers" && (
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Driver</th>
-                      <th>Phone</th>
-                      <th>Assigned vehicle</th>
-                      <th>Status</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {drivers.map((driver) => (
-                      <tr key={driver.name}>
-                        <td>{driver.name}</td>
-                        <td className={styles.mono}>{driver.phone}</td>
-                        <td>{driver.vehicle}</td>
-                        <td>
-                          <span className={badgeClass(driver.statusVariant)}>{driver.status}</span>
-                        </td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button className={styles.iconBtn} onClick={() => setModalKind("driver")}>
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DriverManagement title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
             {activePanel === "vehicles" && (
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Vehicle</th>
-                      <th>Plate</th>
-                      <th>Type</th>
-                      <th>Capacity</th>
-                      <th>Status</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vehicles.map((vehicle) => (
-                      <tr key={vehicle.plate}>
-                        <td>{vehicle.name}</td>
-                        <td className={styles.mono}>{vehicle.plate}</td>
-                        <td>{vehicle.type}</td>
-                        <td>{vehicle.capacity}</td>
-                        <td>
-                          <span className={badgeClass(vehicle.statusVariant)}>{vehicle.status}</span>
-                        </td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button className={styles.iconBtn} onClick={() => setModalKind("vehicle")}>
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <VehicleManagement title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
             {activePanel === "pricing" && (

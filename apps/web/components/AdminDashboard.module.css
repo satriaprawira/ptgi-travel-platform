@@ -621,3 +621,39 @@
     gap: 6px;
   }
 }
+/* ---------- Live data states (Driver / Vehicle Management) ---------- */
+.iconBtnDanger:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btnPrimary:disabled,
+.btnSecondary:disabled,
+.iconBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.tableMessage {
+  text-align: center;
+  color: var(--ink-faint);
+  padding: 28px 12px;
+}
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+.formError {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}

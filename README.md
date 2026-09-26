@@ -1,7 +1,7 @@
 # ptgi-travel-platform
 Private airport transfer booking platform for PT. Goal International, replacing the current Wix-based reservation form with an integrated system for customers, travel agent staff, and drivers.
 
-> **Status:** Phase 1 in development. Frontend is scaffolded; backend is not yet built. Internal / proprietary — not for public distribution.
+> **Status:** Phase 1 in development. Frontend is scaffolded; the backend serves Driver and Vehicle Management for the admin dashboard. Internal / proprietary — not for public distribution.
 
 ---
 
@@ -64,28 +64,34 @@ PRs target `staging` first; once verified there, `staging` merges into `main` to
 
 ## Getting started
 
-### Frontend
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-Opens at http://localhost:3000. See [`apps/web/README.md`](apps/web/README.md) for details.
+**First time?** Follow [`docs/local-development.md`](docs/local-development.md): installing Docker and
+Node, the database, migrations, and running both apps, with troubleshooting.
 
-### Backend
+Short version, once the tools are installed (Docker Desktop running, Node 24):
+
 ```bash
+# Backend + database
 cd apps/api
 cp .env.example .env
-docker compose up -d      # local Postgres
+docker compose up -d      # local Postgres on localhost:5433
 npm install
-npm run start:dev
+npm run migrate:up        # create / update the tables
+npm run start:dev         # http://localhost:4000/v1 (health check: /v1/health)
+
+# Frontend (new terminal)
+cd apps/web
+npm install
+echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:4000" > .env.local
+npm run dev               # http://localhost:3000, admin at /admin
 ```
-Listens at http://localhost:4000/v1 (health check: `/v1/health`). Only the scaffold exists so far: config, database connection, migrations and the health endpoint. See [`apps/api/README.md`](apps/api/README.md).
+
+See [`apps/api/README.md`](apps/api/README.md) for the API's scripts, configuration and endpoints.
 
 ---
 
 ## Documentation
 
+- [`docs/local-development.md`](docs/local-development.md) — step-by-step local setup (Docker, database, both apps)
 - [`docs/backend-vehicle-payment-design.md`](docs/backend-vehicle-payment-design.md) — backend design for the configurable Vehicle & Payment options
 - [`docs/product-brief-review.md`](docs/product-brief-review.md) — requirements review notes
 - [`docs/tech-stack-recommendation.md`](docs/tech-stack-recommendation.md) — stack choice and rationale
