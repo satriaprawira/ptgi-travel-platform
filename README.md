@@ -43,7 +43,7 @@ A monorepo — one place for both apps, deployed independently via each host's r
 nrt-hnd-transfers/
 ├── apps/
 │   ├── web/            Next.js frontend — booking site, staff dashboard, driver PWA  [scaffolded]
-│   └── api/             NestJS backend                                              [planned, Phase 1]
+│   └── api/             NestJS backend                                              [scaffolded]
 ├── packages/
 │   └── shared/           Shared TypeScript types (booking payloads, etc.)             [planned]
 └── docs/                 Product brief, tech stack, environment, and repo docs
@@ -73,12 +73,20 @@ npm run dev
 Opens at http://localhost:3000. See [`apps/web/README.md`](apps/web/README.md) for details.
 
 ### Backend
-Not yet implemented — arriving in Phase 1.
+```bash
+cd apps/api
+cp .env.example .env
+docker compose up -d      # local Postgres
+npm install
+npm run start:dev
+```
+Listens at http://localhost:4000/v1 (health check: `/v1/health`). Only the scaffold exists so far: config, database connection, migrations and the health endpoint. See [`apps/api/README.md`](apps/api/README.md).
 
 ---
 
 ## Documentation
 
+- [`docs/backend-vehicle-payment-design.md`](docs/backend-vehicle-payment-design.md) — backend design for the configurable Vehicle & Payment options
 - [`docs/product-brief-review.md`](docs/product-brief-review.md) — requirements review notes
 - [`docs/tech-stack-recommendation.md`](docs/tech-stack-recommendation.md) — stack choice and rationale
 - [`docs/staging-production-setup.md`](docs/staging-production-setup.md) — environment setup guide

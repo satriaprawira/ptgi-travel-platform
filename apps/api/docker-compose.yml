@@ -1,0 +1,23 @@
+# Local development database only. Staging and production use Neon.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: goal
+      POSTGRES_PASSWORD: goal
+      POSTGRES_DB: goal_intl
+    ports:
+      # Bound to localhost only: the dev password is not meant to be reachable from the network.
+      # Host port 5433 avoids clashing with a Postgres already running on 5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - goal_intl_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goal -d goal_intl"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  goal_intl_pgdata:
