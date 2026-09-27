@@ -11,7 +11,10 @@ export class ApiError extends Error {
 }
 
 /** Calls the NestJS API under /v1. Throws ApiError with a readable message on any failure. */
-export async function apiRequest<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+): Promise<T> {
   if (!API_URL) {
     throw new ApiError("The API address is not configured (set NEXT_PUBLIC_API_URL).", 0);
   }
@@ -23,8 +26,10 @@ export async function apiRequest<T>(path: string, init: { method?: string; body?
       headers: init.body === undefined ? undefined : { "Content-Type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",
+      signal: init.signal,
     });
-  } catch {
+  } catch (error) {
+    if (init.signal?.aborted) throw error; // cancelled by the caller: not a connectivity problem
     throw new ApiError("Can't reach the API. Check that it is running.", 0);
   }
 

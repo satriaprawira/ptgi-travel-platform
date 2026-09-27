@@ -1,14 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { carOptions, countryCodes, countrySuggestions, paymentOptions } from "@/lib/options";
-import TicketPreview from "./TicketPreview";
+import { useEffect, useRef, useState } from "react";
+import { countryCodes, countrySuggestions } from "@/lib/options";
+import { paymentLabel, surchargeBadge, yen } from "@/lib/api/format";
+import { requestQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
+import TicketPreview, { type QuoteState } from "./TicketPreview";
 
 interface AgeGroups {
   adults: boolean;
   infants: boolean;
   children: boolean;
 }
+
+export type Direction = "from-airport" | "to-airport";
 
 interface FormState {
   salutation: string;
@@ -17,16 +21,20 @@ interface FormState {
   bookerName: string;
   pickupDate: string;
   pickupTime: string;
-  pickupLocation: string;
-  destination: string;
+  direction: Direction;
+  airportId: string;
+  serviceRegionId: string;
+  address: string;
   countryOrigin: string;
   hasFlightCode: "yes" | "no";
   flightCode: string;
   passengers: string;
   luggage: string;
   ageGroups: AgeGroups;
-  carType: string;
-  paymentMethod: string;
+  vehicleTypeId: string;
+  paymentMethodId: string;
+  /** add-on id → quantity */
+  addOns: Record<string, number>;
   email: string;
   countryCode: string;
   phone: string;
@@ -35,35 +43,41 @@ interface FormState {
   petInfo: string;
 }
 
-const initialState: FormState = {
+const initialState = (options: ReservationOptions): FormState => ({
   salutation: "",
   fullName: "",
   bookingFor: "yes",
   bookerName: "",
   pickupDate: "",
   pickupTime: "14:30",
-  pickupLocation: "",
-  destination: "",
+  direction: "from-airport",
+  airportId: options.airports[0]?.id ?? "",
+  serviceRegionId: "",
+  address: "",
   countryOrigin: "",
   hasFlightCode: "yes",
   flightCode: "",
   passengers: "",
   luggage: "",
   ageGroups: { adults: true, infants: false, children: false },
-  carType: carOptions[0].value,
-  paymentMethod: paymentOptions[0].value,
+  vehicleTypeId: options.vehicleTypes[0]?.id ?? "",
+  paymentMethodId: options.paymentMethods[0]?.id ?? "",
+  addOns: {},
   email: "",
   countryCode: "",
   phone: "",
   timesUsed: "First time",
   additionalRequests: "",
   petInfo: "",
-};
+});
 
 const timesUsedOptions = ["First time", "Second time", "Third time", "More than three"];
 
-export default function ReservationForm() {
-  const [form, setForm] = useState<FormState>(initialState);
+const QUOTE_DEBOUNCE_MS = 300;
+
+export default function ReservationForm({ options }: { options: ReservationOptions }) {
+  const [form, setForm] = useState<FormState>(() => initialState(options));
+  const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
   const [submitMsg, setSubmitMsg] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,17 +89,62 @@ export default function ReservationForm() {
     setForm((prev) => ({ ...prev, ageGroups: { ...prev.ageGroups, [key]: !prev.ageGroups[key] } }));
   }
 
+  function setAddOn(id: string, quantity: number) {
+    setForm((prev) => ({ ...prev, addOns: { ...prev.addOns, [id]: quantity } }));
+  }
+
+  // Live price: re-quote whenever a price-relevant field changes. Debounced, and a newer request
+  // cancels the older one so a slow response can never overwrite a fresher price.
+  const { airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime } = form;
+  const addOnsKey = JSON.stringify(form.addOns);
+  useEffect(() => {
+    if (!airportId || !serviceRegionId || !vehicleTypeId || !paymentMethodId || !pickupDate || !pickupTime) {
+      setQuote({ status: "idle" });
+      return;
+    }
+    const addOns = Object.entries(JSON.parse(addOnsKey) as Record<string, number>)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([addOnId, quantity]) => ({ addOnId, quantity }));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      // Keep showing the last price (dimmed) while the new one loads, instead of flashing empty.
+      setQuote((prev) => ({
+        status: "loading",
+        previous: prev.status === "ready" ? prev.quote : prev.status === "loading" ? prev.previous : undefined,
+      }));
+      requestQuote(
+        { airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOns },
+        controller.signal,
+      )
+        .then((result: Quote) => setQuote({ status: "ready", quote: result }))
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          setQuote({ status: "error", message: error instanceof Error ? error.message : "Couldn't get a price" });
+        });
+    }, QUOTE_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOnsKey]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // This mockup has no backend wired up yet — see NEXT_PUBLIC_API_URL in .env.example
-    // for where the NestJS API call would go once Phase 1 backend work lands.
+    // Submitting bookings is the next backend milestone (POST /v1/bookings); the price is already live.
     setSubmitMsg(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => setSubmitMsg(false), 2200);
   }
 
-  const selectedCar = carOptions.find((c) => c.value === form.carType);
-  const selectedPayment = paymentOptions.find((p) => p.value === form.paymentMethod);
+  const airport = options.airports.find((a) => a.id === form.airportId);
+  const region = options.serviceRegions.find((r) => r.id === form.serviceRegionId);
+  const selectedVehicle = options.vehicleTypes.find((v) => v.id === form.vehicleTypeId);
+  const selectedPayment = options.paymentMethods.find((p) => p.id === form.paymentMethodId);
+  const wards = options.serviceRegions.filter((r) => r.inside23Wards);
+  const otherAreas = options.serviceRegions.filter((r) => !r.inside23Wards);
+  const fromAirport = form.direction === "from-airport";
 
   return (
     <div className="layout">
@@ -187,7 +246,7 @@ export default function ReservationForm() {
               </div>
               <div className="field">
                 <label htmlFor="pickupTime">
-                  Pick-up time <span className="req">*</span>
+                  Pick-up time (Japan time) <span className="req">*</span>
                 </label>
                 <input
                   type="time"
@@ -199,33 +258,91 @@ export default function ReservationForm() {
               </div>
             </div>
 
+            <div className="field" style={{ marginTop: 18 }}>
+              <label>
+                Trip <span className="req">*</span>
+              </label>
+              <div className="segmented">
+                <input
+                  type="radio"
+                  name="direction"
+                  id="dirFrom"
+                  checked={fromAirport}
+                  onChange={() => update("direction", "from-airport")}
+                />
+                <label htmlFor="dirFrom">From the airport</label>
+                <input
+                  type="radio"
+                  name="direction"
+                  id="dirTo"
+                  checked={!fromAirport}
+                  onChange={() => update("direction", "to-airport")}
+                />
+                <label htmlFor="dirTo">To the airport</label>
+              </div>
+            </div>
+
             <div className="grid-2" style={{ marginTop: 18 }}>
               <div className="field">
-                <label htmlFor="pickupLocation">
-                  Pick-up location <span className="req">*</span>
+                <label htmlFor="airportId">
+                  Airport <span className="req">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="pickupLocation"
-                  placeholder="Building name and full address"
+                <select
+                  id="airportId"
                   required
-                  value={form.pickupLocation}
-                  onChange={(e) => update("pickupLocation", e.target.value)}
-                />
+                  value={form.airportId}
+                  onChange={(e) => update("airportId", e.target.value)}
+                >
+                  {options.airports.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.code})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="field">
-                <label htmlFor="destination">
-                  Destination <span className="req">*</span>
+                <label htmlFor="serviceRegionId">
+                  {fromAirport ? "Drop-off area" : "Pick-up area"} <span className="req">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="destination"
-                  placeholder="Building name and full address"
+                <select
+                  id="serviceRegionId"
                   required
-                  value={form.destination}
-                  onChange={(e) => update("destination", e.target.value)}
-                />
+                  value={form.serviceRegionId}
+                  onChange={(e) => update("serviceRegionId", e.target.value)}
+                >
+                  <option value="" disabled>
+                    Select ward or city
+                  </option>
+                  <optgroup label="Tokyo 23 wards">
+                    {wards.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Other areas">
+                    {otherAreas.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
               </div>
+            </div>
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <label htmlFor="address">
+                {fromAirport ? "Drop-off address" : "Pick-up address"} <span className="req">*</span>
+              </label>
+              <input
+                type="text"
+                id="address"
+                placeholder="Hotel or building name and full address"
+                required
+                value={form.address}
+                onChange={(e) => update("address", e.target.value)}
+              />
             </div>
 
             <div className="grid-2" style={{ marginTop: 18 }}>
@@ -373,22 +490,25 @@ export default function ReservationForm() {
                 Requested car type <span className="req">*</span>
               </label>
               <div className="car-options">
-                {carOptions.map((car) => (
-                  <div className="car-card" key={car.id}>
-                    <input
-                      type="radio"
-                      name="carType"
-                      id={car.id}
-                      checked={form.carType === car.value}
-                      onChange={() => update("carType", car.value)}
-                    />
-                    <label htmlFor={car.id}>
-                      <span className="name">{car.name}</span>
-                      <span className="note">{car.note}</span>
-                      {car.surcharge && <span className="surcharge">{car.surcharge}</span>}
-                    </label>
-                  </div>
-                ))}
+                {options.vehicleTypes.map((vehicle) => {
+                  const badge = surchargeBadge(vehicle.surchargeJpy);
+                  return (
+                    <div className="car-card" key={vehicle.id}>
+                      <input
+                        type="radio"
+                        name="vehicleType"
+                        id={`vt-${vehicle.code}`}
+                        checked={form.vehicleTypeId === vehicle.id}
+                        onChange={() => update("vehicleTypeId", vehicle.id)}
+                      />
+                      <label htmlFor={`vt-${vehicle.code}`}>
+                        <span className="name">{vehicle.name}</span>
+                        {vehicle.note && <span className="note">{vehicle.note}</span>}
+                        {badge && <span className="surcharge">{badge}</span>}
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -397,16 +517,16 @@ export default function ReservationForm() {
                 Payment method <span className="req">*</span>
               </label>
               <div className="pill-group">
-                {paymentOptions.map((pay) => (
-                  <div className="pill" key={pay.id}>
+                {options.paymentMethods.map((method) => (
+                  <div className="pill" key={method.id}>
                     <input
                       type="radio"
-                      name="payMethod"
-                      id={pay.id}
-                      checked={form.paymentMethod === pay.value}
-                      onChange={() => update("paymentMethod", pay.value)}
+                      name="paymentMethod"
+                      id={`pm-${method.code}`}
+                      checked={form.paymentMethodId === method.id}
+                      onChange={() => update("paymentMethodId", method.id)}
                     />
-                    <label htmlFor={pay.id}>{pay.label}</label>
+                    <label htmlFor={`pm-${method.code}`}>{paymentLabel(method)}</label>
                   </div>
                 ))}
               </div>
@@ -481,12 +601,64 @@ export default function ReservationForm() {
               </div>
             </div>
 
+            {options.addOns.length > 0 && (
+              <div className="field" style={{ marginTop: 18 }}>
+                <label>
+                  Extras <span className="hint">— optional</span>
+                </label>
+                <div className="pill-group">
+                  {options.addOns.map((addOn) => {
+                    const quantity = form.addOns[addOn.id] ?? 0;
+                    const price = `+${yen(addOn.priceJpy)}`;
+                    if (addOn.maxQuantity > 1) {
+                      return (
+                        <div className="addon-qty" key={addOn.id}>
+                          <label htmlFor={`ao-${addOn.code}`}>
+                            {addOn.label}
+                            <span className="addon-price">
+                              {addOn.freeQuantity === 0
+                                ? `${price} each`
+                                : `${addOn.freeQuantity === 1 ? "First one" : `First ${addOn.freeQuantity}`} free, then ${price} each`}
+                            </span>
+                          </label>
+                          <select
+                            id={`ao-${addOn.code}`}
+                            value={quantity}
+                            onChange={(e) => setAddOn(addOn.id, Number(e.target.value))}
+                          >
+                            {Array.from({ length: addOn.maxQuantity + 1 }, (_, n) => (
+                              <option key={n} value={n}>
+                                {n === 0 ? "None" : n}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="pill" key={addOn.id}>
+                        <input
+                          type="checkbox"
+                          id={`ao-${addOn.code}`}
+                          checked={quantity > 0}
+                          onChange={(e) => setAddOn(addOn.id, e.target.checked ? 1 : 0)}
+                        />
+                        <label htmlFor={`ao-${addOn.code}`}>
+                          {addOn.label} ({price})
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="grid-2" style={{ marginTop: 18 }}>
               <div className="field">
-                <label htmlFor="additionalRequests">Additional requests</label>
+                <label htmlFor="additionalRequests">Other requests</label>
                 <textarea
                   id="additionalRequests"
-                  placeholder="Baby seat, wheelchair, etc."
+                  placeholder="Anything else our driver should know?"
                   value={form.additionalRequests}
                   onChange={(e) => update("additionalRequests", e.target.value)}
                 />
@@ -505,7 +677,7 @@ export default function ReservationForm() {
 
           <div className="submit-row">
             <button type="submit" className="submit-btn">
-              {submitMsg ? "This is a mockup — no data sent" : "Confirm reservation"}
+              {submitMsg ? "Booking submission is coming soon — no data sent" : "Confirm reservation"}
             </button>
             <p className="form-footnote">*Please complete all required fields before submitting.</p>
           </div>
@@ -515,16 +687,17 @@ export default function ReservationForm() {
       <TicketPreview
         salutation={form.salutation}
         fullName={form.fullName}
-        pickupLocation={form.pickupLocation}
-        destination={form.destination}
+        origin={fromAirport ? airport?.name : region?.name}
+        destination={fromAirport ? region?.name : airport?.name}
         pickupDate={form.pickupDate}
         pickupTime={form.pickupTime}
         hasFlightCode={form.hasFlightCode}
         flightCode={form.flightCode}
         passengers={form.passengers}
         luggage={form.luggage}
-        selectedCar={selectedCar}
-        selectedPayment={selectedPayment}
+        vehicleLabel={selectedVehicle?.label}
+        paymentLabel={selectedPayment?.label}
+        quote={quote}
       />
     </div>
   );

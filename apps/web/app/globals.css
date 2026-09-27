@@ -323,6 +323,49 @@ select {
   outline-offset: 2px;
 }
 
+/* Extras with a quantity (e.g. baby seats): label + small select, sized like a pill */
+.addon-qty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 6px 5px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+}
+.field .addon-qty label {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.addon-price {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+}
+.addon-qty select {
+  width: auto;
+  padding: 5px 28px 5px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+/* Shown instead of the form when the options can't be loaded */
+.unavailable {
+  max-width: 720px;
+  margin: 36px auto 100px;
+  text-align: center;
+}
+.unavailable h2 {
+  margin-bottom: 10px;
+}
+.unavailable p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
 /* ---------- Car type cards ---------- */
 .car-options {
   display: grid;
@@ -537,17 +580,65 @@ select {
 .ticket-bottom .ticket-meta-grid {
   margin-top: 0;
 }
-.ticket-surcharge {
-  margin-top: 16px;
-  font-size: 12px;
+/* Live price (POST /v1/quotes) */
+.ticket-price {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  transition: opacity 0.15s ease;
+}
+.ticket-price-stale {
+  opacity: 0.55;
+}
+.ticket-price-hint,
+.ticket-price-error {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.ticket-price-error {
   color: var(--accent);
   background: var(--accent-soft);
+  border: none;
   border-radius: 8px;
-  padding: 8px 10px;
-  display: none;
+  padding: 9px 11px;
 }
-.ticket-surcharge.show {
-  display: block;
+.price-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.price-lines li,
+.price-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.price-lines li {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.price-lines li span:last-child,
+.price-total span:last-child {
+  font-family: var(--font-mono), monospace;
+  white-space: nowrap;
+}
+.price-total {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--ink);
+}
+.price-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--accent);
 }
 .barcode {
   height: 32px;
