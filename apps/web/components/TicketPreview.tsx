@@ -1,20 +1,28 @@
 "use client";
 
-import type { CarOption, PaymentOption } from "@/lib/options";
+import { yen } from "@/lib/api/format";
+import type { Quote } from "@/lib/api/reservation";
+
+export type QuoteState =
+  | { status: "idle" }
+  | { status: "loading"; previous?: Quote }
+  | { status: "ready"; quote: Quote }
+  | { status: "error"; message: string };
 
 interface TicketPreviewProps {
   salutation: string;
   fullName: string;
-  pickupLocation: string;
-  destination: string;
+  origin?: string;
+  destination?: string;
   pickupDate: string;
   pickupTime: string;
   hasFlightCode: "yes" | "no";
   flightCode: string;
   passengers: string;
   luggage: string;
-  selectedCar?: CarOption;
-  selectedPayment?: PaymentOption;
+  vehicleLabel?: string;
+  paymentLabel?: string;
+  quote: QuoteState;
 }
 
 function formatDate(value: string): string | null {
@@ -24,10 +32,54 @@ function formatDate(value: string): string | null {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function PriceBlock({ state }: { state: QuoteState }) {
+  if (state.status === "idle") {
+    return <div className="ticket-price ticket-price-hint">Choose date, time, airport and area to see your price.</div>;
+  }
+  if (state.status === "error") {
+    return (
+      <div className="ticket-price ticket-price-error" role="alert">
+        {state.message}
+      </div>
+    );
+  }
+
+  const quote = state.status === "ready" ? state.quote : state.previous;
+  if (!quote) return <div className="ticket-price ticket-price-hint">Calculating your price…</div>;
+
+  return (
+    <div className={`ticket-price ${state.status === "loading" ? "ticket-price-stale" : ""}`} aria-live="polite">
+      <ul className="price-lines">
+        {quote.lines.map((line, index) => (
+          <li key={`${line.code}-${index}`}>
+            <span>{line.label}</span>
+            <span>
+              {line.amountJpy === null
+                ? line.minAmountJpy
+                  ? `from ${yen(line.minAmountJpy)}`
+                  : "on request"
+                : line.amountJpy === 0
+                  ? "Free"
+                  : yen(line.amountJpy)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="price-total">
+        <span>{quote.quoteRequired ? "Estimated from" : "Total"}</span>
+        <span>{yen(quote.totalJpy)}</span>
+      </div>
+      {quote.quoteRequired && (
+        <p className="price-note">Part of this trip is quoted by our staff. We&apos;ll confirm the final price by email.</p>
+      )}
+    </div>
+  );
+}
+
 export default function TicketPreview({
   salutation,
   fullName,
-  pickupLocation,
+  origin,
   destination,
   pickupDate,
   pickupTime,
@@ -35,18 +87,15 @@ export default function TicketPreview({
   flightCode,
   passengers,
   luggage,
-  selectedCar,
-  selectedPayment,
+  vehicleLabel,
+  paymentLabel,
+  quote,
 }: TicketPreviewProps) {
   const passengerLabel = fullName.trim()
     ? [salutation, fullName.trim()].filter(Boolean).join(" ")
     : "Add your name above";
   const partyLabel = [passengers.trim(), luggage.trim()].filter(Boolean).join(" · ") || "—";
   const flightLabel = hasFlightCode === "yes" ? flightCode.trim() || "—" : "No code";
-
-  const notes: string[] = [];
-  if (selectedCar?.surcharge) notes.push(`${selectedCar.value}: ${selectedCar.surcharge}`);
-  if (selectedPayment?.surcharge) notes.push(`Cash on arrival: ${selectedPayment.surcharge}`);
 
   return (
     <aside className="ticket-col">
@@ -58,7 +107,7 @@ export default function TicketPreview({
             <span>{passengerLabel}</span>
           </div>
           <div className="ticket-route">
-            <span>{pickupLocation.trim() || "Pick-up location"}</span>
+            <span>{origin || "Pick-up"}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
                 d="M4 12h16M14 6l6 6-6 6"
@@ -68,7 +117,7 @@ export default function TicketPreview({
                 strokeLinejoin="round"
               />
             </svg>
-            <span>{destination.trim() || "Destination"}</span>
+            <span>{destination || "Destination"}</span>
           </div>
           <div className="ticket-meta-grid">
             <div className="m">
@@ -96,18 +145,18 @@ export default function TicketPreview({
           <div className="ticket-meta-grid">
             <div className="m">
               <label>Vehicle</label>
-              <div className="val">{selectedCar?.value ?? "Not selected"}</div>
+              <div className="val">{vehicleLabel ?? "Not selected"}</div>
             </div>
             <div className="m">
               <label>Payment</label>
-              <div className="val">{selectedPayment?.value ?? "Not selected"}</div>
+              <div className="val">{paymentLabel ?? "Not selected"}</div>
             </div>
           </div>
-          {notes.length > 0 && <div className="ticket-surcharge show">{notes.join("  ·  ")}</div>}
+          <PriceBlock state={quote} />
           <div className="barcode" aria-hidden="true" />
         </div>
       </div>
-      <p className="ticket-hint">This preview fills in live as you complete the form.</p>
+      <p className="ticket-hint">This preview and price update live as you complete the form.</p>
     </aside>
   );
 }

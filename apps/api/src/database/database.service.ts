@@ -4,8 +4,13 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 import type { EnvironmentVariables } from '../config/env.validation.js';
 import { describeError } from './describe-error.js';
 
+/** Runs one parameterized statement: satisfied by DatabaseService and by a transaction's PoolClient. */
+export interface Queryable {
+  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<QueryResult<T>>;
+}
+
 @Injectable()
-export class DatabaseService implements OnModuleDestroy {
+export class DatabaseService implements OnModuleDestroy, Queryable {
   private readonly logger = new Logger(DatabaseService.name);
   private readonly pool: Pool;
 

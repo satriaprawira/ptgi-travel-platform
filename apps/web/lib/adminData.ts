@@ -182,36 +182,7 @@ export const waitlist: WaitlistEntry[] = [
   },
 ];
 
-export interface Driver {
-  name: string;
-  phone: string;
-  vehicle: string;
-  status: string;
-  statusVariant: BadgeVariant;
-}
-
-export const drivers: Driver[] = [
-  { name: "Hiroshi Sato", phone: "+81 90-1234-5678", vehicle: "Alphard · JP-3021", status: "On Trip", statusVariant: "accent" },
-  { name: "Kenji Watanabe", phone: "+81 90-2345-6789", vehicle: "Standard · JP-1187", status: "Available", statusVariant: "success" },
-  { name: "Yuki Nakamura", phone: "+81 90-3456-7890", vehicle: "Grand Cabin · JP-4402", status: "Available", statusVariant: "success" },
-  { name: "Takumi Ito", phone: "+81 90-4567-8901", vehicle: "—", status: "Off Duty", statusVariant: "muted" },
-];
-
-export interface Vehicle {
-  name: string;
-  plate: string;
-  type: string;
-  capacity: string;
-  status: string;
-  statusVariant: BadgeVariant;
-}
-
-export const vehicles: Vehicle[] = [
-  { name: "Toyota Alphard 4.0", plate: "JP-3021", type: "New Alphard", capacity: "4 pax · 4 bags", status: "In Use", statusVariant: "accent" },
-  { name: "Honda Stepwagon", plate: "JP-1187", type: "Standard car", capacity: "5 pax · 3 bags", status: "Available", statusVariant: "success" },
-  { name: "Grand Cabin GL", plate: "JP-4402", type: "Grand Cabin", capacity: "8 pax · 6 bags", status: "Available", statusVariant: "success" },
-  { name: "Nissan Serena", plate: "JP-0765", type: "Standard car", capacity: "5 pax · 3 bags", status: "Maintenance", statusVariant: "muted" },
-];
+// Drivers and vehicles are live data now: see lib/api/fleet.ts and components/admin/.
 
 export interface PricingRow {
   packageName: string;
@@ -302,7 +273,7 @@ export const adminUsers: AdminUser[] = [
   { name: "Hiroshi Sato", email: "hiroshi.s@goalintl.co", role: "Driver", roleVariant: "muted", status: "Active", lastLogin: "Today, 06:30" },
 ];
 
-export type ModalKind = "driver" | "vehicle" | "surcharge" | "highseason" | "template" | "user";
+export type ModalKind = "surcharge" | "highseason" | "template" | "user";
 
 export type ModalField =
   | { type: "text" | "date"; label: string; placeholder?: string }
@@ -315,40 +286,6 @@ export interface ModalFormConfig {
 }
 
 export const modalForms: Record<ModalKind, ModalFormConfig> = {
-  driver: {
-    title: "Add Driver",
-    rows: [
-      { type: "text", label: "Full name", placeholder: "e.g. Ryo Yamada" },
-      { type: "text", label: "Phone", placeholder: "+81 90-0000-0000" },
-      {
-        type: "select",
-        label: "Assigned vehicle",
-        options: ["Unassigned", "Alphard · JP-3021", "Standard · JP-1187", "Grand Cabin · JP-4402"],
-      },
-      { type: "text", label: "License number", placeholder: "License ID" },
-    ],
-  },
-  vehicle: {
-    title: "Add Vehicle",
-    rows: [
-      { type: "text", label: "Vehicle name / model", placeholder: "e.g. Toyota Alphard 4.0" },
-      { type: "text", label: "Plate number", placeholder: "JP-0000" },
-      {
-        type: "select",
-        label: "Type",
-        options: [
-          "Standard car",
-          "Medium car",
-          "New Alphard (Haneda)",
-          "New Alphard (Narita)",
-          "Grand Cabin (within 23 wards)",
-          "Grand Cabin (outside 23 wards)",
-          "Bus",
-        ],
-      },
-      { type: "text", label: "Capacity (pax / luggage)", placeholder: "e.g. 4 pax · 4 bags" },
-    ],
-  },
   surcharge: {
     title: "Add Surcharge Rule",
     rows: [
