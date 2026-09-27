@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./AdminDashboard.module.css";
 import DriverManagement from "./admin/DriverManagement";
+import RoutePricing from "./admin/RoutePricing";
 import VehicleManagement from "./admin/VehicleManagement";
 import { PanelHead, badgeClass } from "./admin/ui";
 import {
@@ -24,6 +25,7 @@ type PanelId =
   | "availability"
   | "drivers"
   | "vehicles"
+  | "routes"
   | "pricing"
   | "surcharge"
   | "highseason"
@@ -95,6 +97,22 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Pricing",
     items: [
+      {
+        id: "routes",
+        label: "Route Pricing",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="6" cy="18" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+            <circle cx="18" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+            <path
+              d="M8.2 18H15a3 3 0 000-6H9a3 3 0 010-6h6.8"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        ),
+      },
       {
         id: "pricing",
         label: "Service Pricing",
@@ -197,6 +215,10 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
     title: "Vehicle Management",
     description: "Fleet records – type, plate, capacity, and current condition.",
   },
+  routes: {
+    title: "Route Pricing",
+    description: "Base fare for each airport and area (Standard car), from the service price list.",
+  },
   pricing: {
     title: "Service Pricing Package",
     description: "Base fare for each car type – edit directly, no developer needed.",
@@ -223,7 +245,7 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
 };
 
-const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles"]);
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles", "routes"]);
 
 export default function AdminDashboard() {
   const [activePanel, setActivePanel] = useState<PanelId>("bookings");
@@ -472,6 +494,10 @@ export default function AdminDashboard() {
 
             {activePanel === "vehicles" && (
               <VehicleManagement title={meta.title} description={meta.description} showToast={showToast} />
+            )}
+
+            {activePanel === "routes" && (
+              <RoutePricing title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
             {activePanel === "pricing" && (

@@ -32,6 +32,8 @@ export interface ServiceRegion {
   code: string;
   name: string;
   inside23Wards: boolean;
+  /** Airports with a route to this area: offer the area only when one of these is chosen. */
+  airportIds: string[];
 }
 
 export interface AddOn {
