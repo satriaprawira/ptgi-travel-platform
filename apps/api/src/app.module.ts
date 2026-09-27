@@ -4,6 +4,8 @@ import { validate } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
 import { HealthModule } from './health/health.module.js';
+import { PricingModule } from './pricing/pricing.module.js';
+import { ReservationOptionsModule } from './reservation-options/reservation-options.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
 
 @Module({
@@ -11,6 +13,10 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     ConfigModule.forRoot({ isGlobal: true, validate }),
     DatabaseModule,
     HealthModule,
+    // Public (customer)
+    ReservationOptionsModule,
+    PricingModule,
+    // Admin
     VehiclesModule,
     DriversModule,
   ],

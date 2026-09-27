@@ -29,6 +29,7 @@ Check it: `curl http://localhost:4000/v1/health` returns `{"status":"ok","databa
 | `npm run migrate:create -- <name>` | New SQL migration in `database/migrations/` |
 | `npm run migrate:up` | Apply all pending migrations |
 | `npm run migrate:down` | Roll back the most recent migration |
+| `npm test` / `npm run test:watch` | Unit tests (Vitest), e.g. the pricing rules in `src/pricing/quote.spec.ts` |
 
 Migrations are plain `.sql` files with a `-- Up Migration` and a `-- Down Migration` section, run by
 [node-pg-migrate](https://github.com/salsita/node-pg-migrate) over `DATABASE_URL_DIRECT`. Never edit a
@@ -60,6 +61,10 @@ src/
   common/               AdminAuthGuard, shared DTO transforms
   database/             pg Pool (DatabaseService: query, transaction), Postgres error + PATCH SET helpers
   health/               GET /v1/health
+  reservation-options/  GET /v1/reservation-options (public)
+  pricing/              POST /v1/quotes (public); quote.ts holds the pricing rules, unit-tested
+  vehicle-types/        customer-facing vehicle types (read)
+  payment-methods/      payment methods (read)
   vehicles/             fleet vehicles + vehicle classes (admin)
   drivers/              drivers and their assigned vehicle (admin)
 ```
@@ -72,6 +77,8 @@ section 7.1 of the design doc.
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/v1/health` | Public |
+| GET | `/v1/reservation-options` | Public. Vehicle types, payment methods, airports, areas (regions with a fare) and add-ons. A vehicle type is listed only while the fleet has an Available vehicle of its class |
+| POST | `/v1/quotes` | Public. Prices a trip from `airportId`, `serviceRegionId`, `vehicleTypeId`, `paymentMethodId`, `pickupDate`, `pickupTime` (Tokyo time) and optional `addOns: [{ addOnId, quantity }]`. Returns the line items, `totalJpy` and `quoteRequired` (then `totalJpy` is the "from" price). A past pickup, unknown ids or too many of an add-on → 422 |
 | GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
 | GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
 | GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its driver. Status `retired` keeps history instead |
