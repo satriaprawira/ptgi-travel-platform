@@ -657,3 +657,18 @@
   font-size: 13px;
   margin-bottom: 14px;
 }
+.offeredNote {
+  margin: 14px 2px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.offeredNote strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.offeredNote span {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-faint);
+}

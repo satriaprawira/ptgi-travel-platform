@@ -14,6 +14,7 @@ import {
   type VehicleClass,
   type VehicleStatus,
 } from "@/lib/api/fleet";
+import { getReservationOptions } from "@/lib/api/reservation";
 
 const STATUS: Record<VehicleStatus, { label: string; variant: BadgeVariant }> = {
   active: { label: "Available", variant: "success" },
@@ -59,6 +60,8 @@ interface Props {
 export default function VehicleManagement({ title, description, showToast }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [classes, setClasses] = useState<VehicleClass[]>([]);
+  // Car types the reservation form currently offers: those whose class has an Available vehicle.
+  const [offeredTypes, setOfferedTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -73,9 +76,14 @@ export default function VehicleManagement({ title, description, showToast }: Pro
     setLoading(true);
     setLoadError(null);
     try {
-      const [vehicleList, classList] = await Promise.all([listVehicles(), listVehicleClasses()]);
+      const [vehicleList, classList, reservationOptions] = await Promise.all([
+        listVehicles(),
+        listVehicleClasses(),
+        getReservationOptions(),
+      ]);
       setVehicles(vehicleList);
       setClasses(classList);
+      setOfferedTypes(reservationOptions.vehicleTypes.map((type) => type.label));
     } catch (error) {
       setLoadError(errorMessage(error));
     } finally {
@@ -214,6 +222,22 @@ export default function VehicleManagement({ title, description, showToast }: Pro
           </tbody>
         </table>
       </div>
+
+      {!loading && !loadError && (
+        <p className={styles.offeredNote}>
+          {offeredTypes.length > 0 ? (
+            <>
+              <strong>Customers can book:</strong> {offeredTypes.join(" · ")}
+            </>
+          ) : (
+            <strong>Online booking is paused: no vehicle is Available.</strong>
+          )}
+          <span>
+            A car type appears in the reservation form while at least one vehicle of its type is Available.
+            Maintenance and Retired vehicles don&apos;t count.
+          </span>
+        </p>
+      )}
 
       <FormModal
         open={modal !== null}
