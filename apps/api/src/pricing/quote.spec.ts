@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { calculateQuote, isInTimeWindow, tokyoInstant, type QuoteInput } from './quote.js';
+import { calculateQuote, isInTimeWindow, tokyoInstant, windowText, type QuoteInput } from './quote.js';
 
 // Seed data from the staff price sheets (database/migrations/*seed-pricing.sql).
 const TIME_SURCHARGES = [
-  { label: 'Night time pickup (22:00–22:59)', startsAt: '22:00:00', endsAt: '23:00:00', amountJpy: 2000 },
-  { label: 'Late night pickup (23:00–05:59)', startsAt: '23:00:00', endsAt: '06:00:00', amountJpy: 4000 },
-  { label: 'Early morning pickup (06:00–06:59)', startsAt: '06:00:00', endsAt: '07:00:00', amountJpy: 2000 },
+  { label: 'Night time pickup', startsAt: '22:00:00', endsAt: '23:00:00', amountJpy: 2000 },
+  { label: 'Late night pickup', startsAt: '23:00:00', endsAt: '06:00:00', amountJpy: 4000 },
+  { label: 'Early morning pickup', startsAt: '06:00:00', endsAt: '07:00:00', amountJpy: 2000 },
 ];
 const LAST_MINUTE = [{ label: 'Booking on arrival / last-minute booking', withinHours: 24, amountJpy: 1000 }];
 
@@ -117,6 +117,23 @@ describe('isInTimeWindow', () => {
   it.each(cases)('%s → %s', (time, expected) => {
     const match = TIME_SURCHARGES.find((s) => isInTimeWindow(time, s.startsAt, s.endsAt));
     expect(match?.label.split(' pickup')[0] ?? null).toBe(expected);
+  });
+});
+
+describe('windowText', () => {
+  it.each([
+    ['22:00', '23:00', '22:00–22:59'],
+    ['23:00', '06:00', '23:00–05:59'],
+    ['22:30:00', '00:00:00', '22:30–23:59'], // pg's HH:MM:SS; ending at midnight
+    ['00:00', '00:30', '00:00–00:29'],
+  ])('[%s, %s) → %s', (startsAt, endsAt, expected) => {
+    expect(windowText(startsAt, endsAt)).toBe(expected);
+  });
+
+  it('follows the window when staff move it, so the label can never go stale', () => {
+    const moved = [{ ...TIME_SURCHARGES[1], startsAt: '22:30', endsAt: '05:00' }];
+    const quote = calculateQuote(input({ pickupTime: '22:45', timeSurcharges: moved }));
+    expect(quote.lines[1].label).toBe('Late night pickup (22:30–04:59)');
   });
 });
 

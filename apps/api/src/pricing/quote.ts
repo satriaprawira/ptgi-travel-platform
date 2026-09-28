@@ -41,6 +41,18 @@ export function minutesOfDay(time: string): number {
   return hours * 60 + minutes;
 }
 
+const hhmm = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+
+/**
+ * A window as the price sheet writes it, last minute inclusive: [23:00, 06:00) → "23:00–05:59".
+ * Always derived from the times, so a label never contradicts the window it describes.
+ */
+export function windowText(startsAt: string, endsAt: string): string {
+  const lastMinute = (minutesOfDay(endsAt) + 24 * 60 - 1) % (24 * 60);
+  return `${hhmm(minutesOfDay(startsAt))}–${hhmm(lastMinute)}`;
+}
+
 /** Window is [startsAt, endsAt). endsAt earlier than startsAt means it wraps midnight (23:00–06:00). */
 export function isInTimeWindow(time: string, startsAt: string, endsAt: string): boolean {
   const t = minutesOfDay(time);
@@ -67,7 +79,11 @@ export function calculateQuote(input: QuoteInput): Quote {
   // Windows don't overlap (checked when they're edited), so at most one matches.
   const timeSurcharge = input.timeSurcharges.find((s) => isInTimeWindow(input.pickupTime, s.startsAt, s.endsAt));
   if (timeSurcharge) {
-    lines.push({ code: 'pickup-time', label: timeSurcharge.label, amountJpy: timeSurcharge.amountJpy });
+    lines.push({
+      code: 'pickup-time',
+      label: `${timeSurcharge.label} (${windowText(timeSurcharge.startsAt, timeSurcharge.endsAt)})`,
+      amountJpy: timeSurcharge.amountJpy,
+    });
   }
 
   // If several rules match (e.g. "within 24 h" and a stricter "within 3 h"), the most specific one wins.
