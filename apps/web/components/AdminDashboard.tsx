@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./AdminDashboard.module.css";
 import DriverManagement from "./admin/DriverManagement";
 import RoutePricing from "./admin/RoutePricing";
+import SurchargeEditor from "./admin/SurchargeEditor";
 import VehicleManagement from "./admin/VehicleManagement";
 import { PanelHead, badgeClass } from "./admin/ui";
 import {
@@ -12,9 +13,7 @@ import {
   highSeasonRows,
   modalForms,
   notificationTemplates,
-  pricingRows,
   scheduleAxis,
-  surchargeRows,
   todaySchedule,
   waitlist,
   type ModalKind,
@@ -26,7 +25,6 @@ type PanelId =
   | "drivers"
   | "vehicles"
   | "routes"
-  | "pricing"
   | "surcharge"
   | "highseason"
   | "notifications"
@@ -106,20 +104,6 @@ const NAV_GROUPS: NavGroup[] = [
             <circle cx="18" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.8" />
             <path
               d="M8.2 18H15a3 3 0 000-6H9a3 3 0 010-6h6.8"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        ),
-      },
-      {
-        id: "pricing",
-        label: "Service Pricing",
-        icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.3-5 3 2.2 2.6 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"
               stroke="currentColor"
               strokeWidth="1.8"
               strokeLinecap="round"
@@ -219,14 +203,9 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
     title: "Route Pricing",
     description: "Base fare for each airport and area (Standard car), from the service price list.",
   },
-  pricing: {
-    title: "Service Pricing Package",
-    description: "Base fare for each car type – edit directly, no developer needed.",
-  },
   surcharge: {
     title: "Surcharge",
-    description: "Additional fees applied on top of the base fare.",
-    action: { label: "+ Add Surcharge Rule", kind: "surcharge" },
+    description: "Additional costs added on top of the route fare, from the service price list.",
   },
   highseason: {
     title: "High-Season Rates",
@@ -245,7 +224,7 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
 };
 
-const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles", "routes"]);
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles", "routes", "surcharge"]);
 
 export default function AdminDashboard() {
   const [activePanel, setActivePanel] = useState<PanelId>("bookings");
@@ -500,84 +479,8 @@ export default function AdminDashboard() {
               <RoutePricing title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
-            {activePanel === "pricing" && (
-              <div className={styles.card}>
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Package</th>
-                        <th>Notes</th>
-                        <th>Base price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pricingRows.map((row) => (
-                        <tr key={row.packageName}>
-                          <td>{row.packageName}</td>
-                          <td className={styles.cellSub} style={{ display: "table-cell" }}>
-                            {row.note}
-                          </td>
-                          <td className={styles.amountInput}>
-                            <span>¥</span>
-                            <input type="text" defaultValue={row.price} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className={styles.saveRow}>
-                  <button className={styles.btnPrimary} onClick={() => showToast("Pricing updated")}>
-                    Save changes
-                  </button>
-                </div>
-              </div>
-            )}
-
             {activePanel === "surcharge" && (
-              <div className={styles.card}>
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Rule</th>
-                        <th>Amount</th>
-                        <th>Active</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {surchargeRows.map((row) => (
-                        <tr key={row.rule}>
-                          <td>{row.rule}</td>
-                          <td className={styles.amountCell}>
-                            <span>¥</span>
-                            <input type="text" defaultValue={row.amount} />
-                          </td>
-                          <td>
-                            <span className={badgeClass(row.active ? "success" : "muted")}>
-                              {row.active ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td>
-                            <div className={styles.rowActions}>
-                              <button className={styles.iconBtn} onClick={() => setModalKind("surcharge")}>
-                                Edit
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className={styles.saveRow}>
-                  <button className={styles.btnPrimary} onClick={() => showToast("Surcharge rules updated")}>
-                    Save changes
-                  </button>
-                </div>
-              </div>
+              <SurchargeEditor title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
             {activePanel === "highseason" && (
