@@ -182,36 +182,8 @@ export const waitlist: WaitlistEntry[] = [
   },
 ];
 
-// Drivers and vehicles are live data now: see lib/api/fleet.ts and components/admin/.
-
-export interface PricingRow {
-  packageName: string;
-  note: string;
-  price: string;
-}
-
-export const pricingRows: PricingRow[] = [
-  { packageName: "Standard car", note: "Nissan Serena / Honda Stepwagon", price: "8,000" },
-  { packageName: "Medium car", note: "Alphard / Vellfire", price: "12,000" },
-  { packageName: "New Alphard 4.0 (Haneda)", note: "Haneda pick-up", price: "16,000" },
-  { packageName: "New Alphard 4.0 (Narita)", note: "Narita pick-up", price: "19,000" },
-  { packageName: "Grand Cabin (within 23 wards)", note: "Within 23 wards", price: "22,000" },
-  { packageName: "Grand Cabin (outside 23 wards)", note: "Outside 23 wards", price: "26,000" },
-  { packageName: "Bus", note: "Group travel – quote on request", price: "Inquire" },
-];
-
-export interface SurchargeRow {
-  rule: string;
-  amount: string;
-  active: boolean;
-}
-
-export const surchargeRows: SurchargeRow[] = [
-  { rule: "Cash on arrival fee", amount: "1,000", active: true },
-  { rule: "Late-night pick-up (22:00–05:00)", amount: "1,500", active: true },
-  { rule: "Extra luggage (per item over limit)", amount: "500", active: true },
-  { rule: "Additional stop", amount: "1,000", active: false },
-];
+// Live data now, see lib/api/ and components/admin/: drivers and vehicles (fleet.ts),
+// route pricing (fares.ts) and surcharges (surcharges.ts).
 
 export interface HighSeasonRow {
   period: string;
@@ -273,7 +245,7 @@ export const adminUsers: AdminUser[] = [
   { name: "Hiroshi Sato", email: "hiroshi.s@goalintl.co", role: "Driver", roleVariant: "muted", status: "Active", lastLogin: "Today, 06:30" },
 ];
 
-export type ModalKind = "surcharge" | "highseason" | "template" | "user";
+export type ModalKind = "highseason" | "template" | "user";
 
 export type ModalField =
   | { type: "text" | "date"; label: string; placeholder?: string }
@@ -286,15 +258,6 @@ export interface ModalFormConfig {
 }
 
 export const modalForms: Record<ModalKind, ModalFormConfig> = {
-  surcharge: {
-    title: "Add Surcharge Rule",
-    rows: [
-      { type: "text", label: "Rule name", placeholder: "e.g. Airport toll fee" },
-      { type: "text", label: "Amount", placeholder: "¥ 0" },
-      { type: "select", label: "Type", options: ["Flat fee", "Percentage of fare"] },
-      { type: "select", label: "Status", options: ["Active", "Inactive"] },
-    ],
-  },
   highseason: {
     title: "Add High-Season Period",
     rows: [

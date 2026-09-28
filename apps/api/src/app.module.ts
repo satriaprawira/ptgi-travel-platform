@@ -3,9 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { validate } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
+import { FaresModule } from './fares/fares.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
 import { ReservationOptionsModule } from './reservation-options/reservation-options.module.js';
+import { SurchargesModule } from './surcharges/surcharges.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
 
 @Module({
@@ -19,6 +21,8 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     // Admin
     VehiclesModule,
     DriversModule,
+    FaresModule,
+    SurchargesModule,
   ],
 })
 export class AppModule {}

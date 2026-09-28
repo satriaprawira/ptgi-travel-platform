@@ -142,8 +142,19 @@ export default function ReservationForm({ options }: { options: ReservationOptio
   const region = options.serviceRegions.find((r) => r.id === form.serviceRegionId);
   const selectedVehicle = options.vehicleTypes.find((v) => v.id === form.vehicleTypeId);
   const selectedPayment = options.paymentMethods.find((p) => p.id === form.paymentMethodId);
-  const wards = options.serviceRegions.filter((r) => r.inside23Wards);
-  const otherAreas = options.serviceRegions.filter((r) => !r.inside23Wards);
+  // Only areas with a route (an active fare) from the chosen airport can be priced.
+  const areas = options.serviceRegions.filter((r) => r.airportIds.includes(form.airportId));
+  const wards = areas.filter((r) => r.inside23Wards);
+  const otherAreas = areas.filter((r) => !r.inside23Wards);
+
+  function changeAirport(id: string) {
+    setForm((prev) => {
+      const regionStillServed = options.serviceRegions.some(
+        (r) => r.id === prev.serviceRegionId && r.airportIds.includes(id),
+      );
+      return { ...prev, airportId: id, serviceRegionId: regionStillServed ? prev.serviceRegionId : "" };
+    });
+  }
   const fromAirport = form.direction === "from-airport";
 
   return (
@@ -291,7 +302,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   id="airportId"
                   required
                   value={form.airportId}
-                  onChange={(e) => update("airportId", e.target.value)}
+                  onChange={(e) => changeAirport(e.target.value)}
                 >
                   {options.airports.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -313,20 +324,24 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   <option value="" disabled>
                     Select ward or city
                   </option>
-                  <optgroup label="Tokyo 23 wards">
-                    {wards.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Other areas">
-                    {otherAreas.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </optgroup>
+                  {wards.length > 0 && (
+                    <optgroup label="Tokyo 23 wards">
+                      {wards.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {otherAreas.length > 0 && (
+                    <optgroup label="Other areas">
+                      {otherAreas.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
             </div>

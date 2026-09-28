@@ -12,6 +12,8 @@ export interface ServiceRegion {
   code: string;
   name: string;
   inside23Wards: boolean;
+  /** Airports with an active fare to this area: the form only offers the area for these. */
+  airportIds: string[];
 }
 
 export interface AddOn {
@@ -55,11 +57,15 @@ const LIST_ACTIVE_ADD_ONS = `
   WHERE is_active
   ORDER BY sort_order, label`;
 
-// Only regions with an active fare from at least one airport are offered.
+// Only regions with an active fare from at least one airport are offered, each with those airports.
+// airport_ids comes back as text[] so pg returns a plain string array.
 const LIST_PRICED_REGIONS = `
-  SELECT r.id, r.code, r.name, r.inside_23_wards
+  SELECT r.id, r.code, r.name, r.inside_23_wards,
+         array_agg(f.airport_id::text ORDER BY a.sort_order) AS airport_ids
   FROM service_regions r
-  WHERE EXISTS (SELECT 1 FROM fares f WHERE f.service_region_id = r.id AND f.is_active)
+  JOIN fares f ON f.service_region_id = r.id AND f.is_active
+  JOIN airports a ON a.id = f.airport_id
+  GROUP BY r.id
   ORDER BY r.sort_order, r.name`;
 
 const FIND_ACTIVE_FARE = `
@@ -90,10 +96,20 @@ export class PricingRepository {
   }
 
   async listPricedRegions(): Promise<ServiceRegion[]> {
-    const { rows } = await this.db.query<{ id: string; code: string; name: string; inside_23_wards: boolean }>(
-      LIST_PRICED_REGIONS,
-    );
-    return rows.map((row) => ({ id: row.id, code: row.code, name: row.name, inside23Wards: row.inside_23_wards }));
+    const { rows } = await this.db.query<{
+      id: string;
+      code: string;
+      name: string;
+      inside_23_wards: boolean;
+      airport_ids: string[];
+    }>(LIST_PRICED_REGIONS);
+    return rows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      inside23Wards: row.inside_23_wards,
+      airportIds: row.airport_ids,
+    }));
   }
 
   async listActiveAddOns(): Promise<AddOn[]> {

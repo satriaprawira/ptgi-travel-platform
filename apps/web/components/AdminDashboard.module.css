@@ -335,31 +335,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 0 16px;
 }
-.amountInput {
-  position: relative;
-}
-.amountInput span {
-  position: absolute;
-  left: 12px;
-  top: 37px;
-  font-size: 13px;
-  color: var(--ink-faint);
-}
-.amountInput input {
-  padding-left: 28px !important;
-}
-.amountCell {
-  position: relative;
-  padding-left: 34px !important;
-}
-.amountCell span {
-  position: absolute;
-  left: 12px;
-  top: 14px;
-  font-size: 13px;
-  color: var(--ink-faint);
-}
-
 .rowActions {
   display: flex;
   gap: 8px;
@@ -669,6 +644,11 @@
 }
 .offeredNote span {
   display: block;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.fieldHint {
+  margin: -8px 0 14px;
   font-size: 12px;
   color: var(--ink-faint);
 }
