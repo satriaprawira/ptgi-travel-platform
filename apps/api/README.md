@@ -65,6 +65,8 @@ src/
   pricing/              POST /v1/quotes (public); quote.ts holds the pricing rules, unit-tested
   vehicle-types/        customer-facing vehicle types (read)
   payment-methods/      payment methods (read)
+  fares/                route pricing: base fare per airport and area (admin)
+  surcharges/           everything added on top of the fare (admin); time-windows.ts = overlap check
   vehicles/             fleet vehicles + vehicle classes (admin)
   drivers/              drivers and their assigned vehicle (admin)
 ```
@@ -82,6 +84,10 @@ section 7.1 of the design doc.
 | GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
 | GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
 | GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its driver. Status `retired` keeps history instead |
+| GET | `/v1/admin/fares` | Route pricing: every airport ⇄ area base fare, in price-sheet order |
+| GET, PATCH | `/v1/admin/fares/:id` | Edit `zone`, `priceJpy` (`null` = quote on request), `minPriceJpy` ("from" price, quote routes only), `isActive` (hide from the booking form). No create/delete |
+| GET | `/v1/admin/surcharges` | The whole "Additional Cost" sheet: vehicle surcharges, pickup-time windows, last-minute fee, extras, payment fees |
+| PATCH | `/v1/admin/surcharges/{vehicle-types,pickup-times,last-minute,add-ons,payment-methods}/:id` | Edit one row; returns the whole sheet. Pickup-time windows can't overlap (422, serialized by an advisory lock). Pickup-time labels are names only; the window is appended where customers see it. No create/delete |
 | GET, POST | `/v1/admin/drivers` | Optional `vehicleId`; a vehicle belongs to one driver at most (409) |
 | GET, PATCH, DELETE | `/v1/admin/drivers/:id` | `vehicleId: null` unassigns. New assignments to a retired vehicle → 422 |
 

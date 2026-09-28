@@ -3,6 +3,7 @@ import { DatabaseError } from 'pg';
 export const PgErrorCode = {
   ForeignKeyViolation: '23503',
   UniqueViolation: '23505',
+  CheckViolation: '23514',
 } as const;
 
 /** True when `error` is a Postgres error with this SQLSTATE and, if given, this constraint name. */
