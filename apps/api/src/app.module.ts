@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module.js';
 import { validate } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
@@ -19,6 +20,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     ReservationOptionsModule,
     PricingModule,
     // Admin
+    AuthModule,
     VehiclesModule,
     DriversModule,
     FaresModule,

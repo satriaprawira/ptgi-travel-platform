@@ -48,6 +48,7 @@ app at startup with a list of what's wrong. See [`.env.example`](.env.example) f
 | `DATABASE_URL_DIRECT` | Migrations only. On Neon: the direct (unpooled) string. |
 | `WEB_ORIGIN` | The single browser origin allowed by CORS, e.g. `http://localhost:3000`. |
 | `AUTH_DISABLED` | Local only. The app refuses to start with `true` unless `NODE_ENV=development`. |
+| `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`, `AUTH_TOKEN_SECRET` | Demo admin sign-in. All three or none. Password 16+ characters in production; secret 32+ characters (`openssl rand -base64 48`). |
 
 In development the API listens on `127.0.0.1` only; in any other environment on `0.0.0.0`.
 
@@ -58,6 +59,7 @@ database/migrations/    SQL migrations
 src/
   main.ts               global prefix /v1, validation pipe, CORS, shutdown hooks
   config/               environment schema and validation
+  auth/                 demo admin sign-in: POST /v1/auth/login, GET /v1/auth/me; token.ts = signed tokens
   common/               AdminAuthGuard, shared DTO transforms
   database/             pg Pool (DatabaseService: query, transaction), Postgres error + PATCH SET helpers
   health/               GET /v1/health
@@ -80,6 +82,8 @@ section 7.1 of the design doc.
 |---|---|---|
 | GET | `/v1/health` | Public |
 | GET | `/v1/reservation-options` | Public. Vehicle types, payment methods, airports, areas (regions with a fare) and add-ons. A vehicle type is listed only while the fleet has an Available vehicle of its class |
+| POST | `/v1/auth/login` | Demo admin sign-in: `{ email, password }` → `{ accessToken, expiresAt, user }` (12 h). Wrong credentials → 401; demo login not configured → 503 |
+| GET | `/v1/auth/me` | The signed-in admin (`Authorization: Bearer <token>`), or `authDisabled: true` in local development |
 | POST | `/v1/quotes` | Public. Prices a trip from `airportId`, `serviceRegionId`, `vehicleTypeId`, `paymentMethodId`, `pickupDate`, `pickupTime` (Tokyo time) and optional `addOns: [{ addOnId, quantity }]`. Returns the line items, `totalJpy` and `quoteRequired` (then `totalJpy` is the "from" price). A past pickup, unknown ids or too many of an add-on → 422 |
 | GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
 | GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
@@ -91,6 +95,8 @@ section 7.1 of the design doc.
 | GET, POST | `/v1/admin/drivers` | Optional `vehicleId`; a vehicle belongs to one driver at most (409) |
 | GET, PATCH, DELETE | `/v1/admin/drivers/:id` | `vehicleId: null` unassigns. New assignments to a retired vehicle → 422 |
 
-All `/v1/admin/*` routes go through `AdminAuthGuard`: with no auth provider chosen yet, they answer 401
-unless `AUTH_DISABLED=true`, which only development accepts. PATCH bodies are partial; omitted fields are
-left alone, `null` is accepted only for the nullable `licenseNumber` and `vehicleId`.
+All `/v1/admin/*` routes go through `AdminAuthGuard`. They need `Authorization: Bearer <token>` from
+`POST /v1/auth/login`, unless `AUTH_DISABLED=true` (development only). Without the demo-login variables
+they answer 401 "Admin authentication is not configured". The demo login is a stand-in for a real auth
+provider (Auth.js or Clerk), which will issue tokens with the same `role` claim. PATCH bodies are partial;
+omitted fields are left alone, `null` is accepted only for the nullable `licenseNumber` and `vehicleId`.

@@ -1,7 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./AdminDashboard.module.css";
+import { getSession, logout, type Session } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { SESSION_EXPIRED_EVENT } from "@/lib/api/token";
 import DriverManagement from "./admin/DriverManagement";
 import RoutePricing from "./admin/RoutePricing";
 import SurchargeEditor from "./admin/SurchargeEditor";
@@ -226,7 +230,13 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
 
 const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles", "routes", "surcharge"]);
 
+const LOGIN_URL = "/login?next=/admin";
+
 export default function AdminDashboard() {
+  const router = useRouter();
+  // null while checking; the dashboard only renders once the API confirms the session.
+  const [session, setSession] = useState<Session | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<PanelId>("bookings");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalKind, setModalKind] = useState<ModalKind | null>(null);
@@ -236,6 +246,28 @@ export default function AdminDashboard() {
   const templateRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  // Signed in (or local development with AUTH_DISABLED)? Otherwise go to the sign-in page.
+  useEffect(() => {
+    getSession()
+      .then(setSession)
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) router.replace(LOGIN_URL);
+        else setSessionError(error instanceof Error ? error.message : "Couldn't check your session");
+      });
+  }, [router]);
+
+  // A token that expires mid-session (12 h) is rejected by the API: back to sign-in.
+  useEffect(() => {
+    const onExpired = () => router.replace(`${LOGIN_URL}&expired=1`);
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [router]);
+
+  const signOut = () => {
+    logout();
+    router.replace("/login");
+  };
 
   useEffect(() => {
     editingTemplates.forEach((id) => templateRefs.current[id]?.focus());
@@ -271,6 +303,23 @@ export default function AdminDashboard() {
     showToast("Saved – this is a mockup, no data is stored");
   };
 
+  if (!session) {
+    return (
+      <div className={styles.sessionCheck} role={sessionError ? "alert" : "status"}>
+        {sessionError ? (
+          <>
+            <p>Couldn&apos;t open the admin: {sessionError}</p>
+            <button className={styles.btnSecondary} onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          </>
+        ) : (
+          <p>Checking your session…</p>
+        )}
+      </div>
+    );
+  }
+
   const meta = PANEL_META[activePanel];
   const modalConfig = modalKind ? modalForms[modalKind] : null;
 
@@ -283,6 +332,18 @@ export default function AdminDashboard() {
           </svg>
           Goal International Co., Ltd
           <span className={styles.adminBadge}>Admin</span>
+        </div>
+        <div className={styles.userMenu}>
+          {session.authDisabled ? (
+            <span className={styles.userEmail}>Local development · no sign-in</span>
+          ) : (
+            <>
+              <span className={styles.userEmail}>{session.email}</span>
+              <button className={styles.signOut} onClick={signOut}>
+                Sign out
+              </button>
+            </>
+          )}
         </div>
         <button
           className={styles.hamburger}
