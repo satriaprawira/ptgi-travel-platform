@@ -337,3 +337,17 @@
     transform: none;
   }
 }
+
+/* Demo sign-in (POST /v1/auth/login) */
+.formError {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

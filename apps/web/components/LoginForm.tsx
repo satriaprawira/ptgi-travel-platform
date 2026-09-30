@@ -1,14 +1,33 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./LoginForm.module.css";
+import { login } from "@/lib/api/auth";
+
+/** Where to go after signing in: ?next=/admin, only ever a path on this site. */
+function nextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+}
 
 export default function LoginForm() {
+  const router = useRouter();
   const [isSignup, setIsSignup] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("expired") === "1") {
+      setError("Your session has ended. Please sign in again.");
+    }
+  }, []);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -16,9 +35,22 @@ export default function LoginForm() {
     toastTimer.current = setTimeout(() => setToast(null), 2400);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    showToast(isSignup ? "Account created – mockup only" : "Logged in – mockup only");
+    if (isSignup) {
+      // No customer accounts yet: only the demo staff sign-in is live.
+      showToast("Account created – mockup only");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await login(email, password);
+      router.replace(nextPath());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -95,7 +127,13 @@ export default function LoginForm() {
             <span>or</span>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(event) => void handleSubmit(event)}>
+            {error && !isSignup && (
+              <div className={styles.formError} role="alert">
+                {error}
+              </div>
+            )}
+
             {isSignup && (
               <div className={styles.field}>
                 <label htmlFor="fullName">Full name</label>
@@ -105,12 +143,28 @@ export default function LoginForm() {
 
             <div className={styles.field}>
               <label htmlFor="email">Email</label>
-              <input type="email" id="email" placeholder="you@example.com" required />
+              <input
+                type="email"
+                id="email"
+                placeholder="you@example.com"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <div className={styles.field}>
               <label htmlFor="password">Password</label>
-              <input type="password" id="password" placeholder="••••••••" required />
+              <input
+                type="password"
+                id="password"
+                placeholder="••••••••"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
 
             {isSignup && (
@@ -137,8 +191,8 @@ export default function LoginForm() {
               </div>
             )}
 
-            <button type="submit" className={styles.btnPrimary}>
-              {isSignup ? "Create account" : "Log in"}
+            <button type="submit" className={styles.btnPrimary} disabled={submitting}>
+              {isSignup ? "Create account" : submitting ? "Signing in…" : "Log in"}
             </button>
 
             {isSignup && (
