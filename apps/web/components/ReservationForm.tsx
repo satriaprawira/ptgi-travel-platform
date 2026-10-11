@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { countryCodes, countrySuggestions } from "@/lib/options";
+import { createBooking, type BookingReceipt } from "@/lib/api/bookings";
 import { paymentLabel, surchargeBadge, yen } from "@/lib/api/format";
 import { requestQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
 import TicketPreview, { type QuoteState } from "./TicketPreview";
@@ -78,8 +79,10 @@ const QUOTE_DEBOUNCE_MS = 300;
 export default function ReservationForm({ options }: { options: ReservationOptions }) {
   const [form, setForm] = useState<FormState>(() => initialState(options));
   const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
-  const [submitMsg, setSubmitMsg] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Set once the booking is saved: the form is replaced by the confirmation.
+  const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -130,12 +133,56 @@ export default function ReservationForm({ options }: { options: ReservationOptio
     };
   }, [airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOnsKey]);
 
-  function handleSubmit(e: React.FormEvent) {
+  // Saves the booking. The server recalculates the price and holds a car for the pickup time;
+  // if none is free it says so, and the customer can pick another time or car type.
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Submitting bookings is the next backend milestone (POST /v1/bookings); the price is already live.
-    setSubmitMsg(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setSubmitMsg(false), 2200);
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const saved = await createBooking({
+        airportId: form.airportId,
+        serviceRegionId: form.serviceRegionId,
+        vehicleTypeId: form.vehicleTypeId,
+        paymentMethodId: form.paymentMethodId,
+        pickupDate: form.pickupDate,
+        pickupTime: form.pickupTime,
+        addOns: Object.entries(form.addOns)
+          .filter(([, quantity]) => quantity > 0)
+          .map(([addOnId, quantity]) => ({ addOnId, quantity })),
+        direction: form.direction === "from-airport" ? "from_airport" : "to_airport",
+        address: form.address,
+        flightCode: form.hasFlightCode === "yes" ? form.flightCode.trim() || null : null,
+        salutation: form.salutation,
+        passengerName: form.fullName,
+        bookerName: form.bookingFor === "no" ? form.bookerName.trim() || null : null,
+        countryOrigin: form.countryOrigin,
+        passengers: form.passengers,
+        luggage: form.luggage,
+        ageAdults: form.ageGroups.adults,
+        ageInfants: form.ageGroups.infants,
+        ageChildren: form.ageGroups.children,
+        email: form.email,
+        phoneCountryCode: form.countryCode,
+        phone: form.phone,
+        timesUsed: form.timesUsed || null,
+        additionalRequests: form.additionalRequests.trim() || null,
+        petInfo: form.petInfo.trim() || null,
+      });
+      setReceipt(saved);
+      window.scrollTo(0, 0);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "We couldn't save your reservation. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function startAnother() {
+    setForm(initialState(options));
+    setReceipt(null);
+    setSubmitError(null);
   }
 
   const airport = options.airports.find((a) => a.id === form.airportId);
@@ -160,7 +207,51 @@ export default function ReservationForm({ options }: { options: ReservationOptio
   return (
     <div className="layout">
       <main>
-        <form id="resForm" onSubmit={handleSubmit}>
+        {receipt && (
+          <section className="card booking-done" role="status">
+            <div className="booking-done-label">Reservation received</div>
+            <h2>Thank you, {form.salutation} {form.fullName.trim()}</h2>
+            <p>
+              Your booking number is <strong className="booking-ref">{receipt.reference}</strong>. Please keep it for
+              any questions about this trip.
+            </p>
+            <dl className="booking-summary">
+              <div>
+                <dt>Pick-up</dt>
+                <dd>
+                  {receipt.pickupDate} · {receipt.pickupTime} (Japan time)
+                </dd>
+              </div>
+              <div>
+                <dt>Route</dt>
+                <dd>
+                  {fromAirport ? airport?.name : region?.name} → {fromAirport ? region?.name : airport?.name}
+                </dd>
+              </div>
+              <div>
+                <dt>Vehicle</dt>
+                <dd>{receipt.vehicleLabel}</dd>
+              </div>
+              <div>
+                <dt>{receipt.quoteRequired ? "Estimated from" : "Total"}</dt>
+                <dd>
+                  {yen(receipt.totalJpy)} · {receipt.paymentLabel}
+                </dd>
+              </div>
+            </dl>
+            <p>
+              <strong>What happens next:</strong> a car is now held for your pick-up time. Our staff will review your
+              reservation and confirm it
+              {receipt.quoteRequired ? ", including the final price," : ""} using the contact details you gave us (
+              {form.email}).
+            </p>
+            <button type="button" className="submit-btn" onClick={startAnother}>
+              Make another reservation
+            </button>
+          </section>
+        )}
+
+        <form id="resForm" onSubmit={(e) => void handleSubmit(e)} hidden={receipt !== null}>
           {/* 01 Trip details */}
           <section className="card">
             <div className="card-head">
@@ -691,11 +782,16 @@ export default function ReservationForm({ options }: { options: ReservationOptio
           </section>
 
           <div className="submit-row">
-            <button type="submit" className="submit-btn">
-              {submitMsg ? "Booking submission is coming soon — no data sent" : "Confirm reservation"}
+            <button type="submit" className="submit-btn" disabled={submitting}>
+              {submitting ? "Saving your reservation…" : "Confirm reservation"}
             </button>
             <p className="form-footnote">*Please complete all required fields before submitting.</p>
           </div>
+          {submitError && (
+            <p className="submit-error" role="alert">
+              {submitError}
+            </p>
+          )}
         </form>
       </main>
 

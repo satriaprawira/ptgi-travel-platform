@@ -13,6 +13,14 @@ export function windowText(startsAt: string, endsAt: string): string {
   return `${hhmm(minutes(startsAt))}–${hhmm((minutes(endsAt) + 24 * 60 - 1) % (24 * 60))}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-10-16", "14:30" → "16 Oct · 14:30". The inputs are already Tokyo time, so nothing is converted. */
+export function tripDateTime(date: string, time: string): string {
+  const [, month, day] = date.split("-").map(Number);
+  return `${day} ${MONTHS[month - 1]} · ${time}`;
+}
+
 /** Vehicle card badge: "+¥3,000", "Please inquire", or nothing for no surcharge. */
 export function surchargeBadge(surchargeJpy: number | null): string | null {
   if (surchargeJpy === null) return "Please inquire";

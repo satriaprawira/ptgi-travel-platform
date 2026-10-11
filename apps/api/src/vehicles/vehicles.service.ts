@@ -46,7 +46,7 @@ export class VehiclesService {
     const found = await this.vehicles.delete(id).catch((error: unknown) => {
       // Assigned drivers are unassigned by ON DELETE SET NULL; any other reference (trips, later) blocks it.
       if (isPgError(error, PgErrorCode.ForeignKeyViolation)) {
-        throw new ConflictException('Vehicle is still referenced; retire it instead of deleting');
+        throw new ConflictException('This vehicle has bookings; set it to Retired instead of deleting');
       }
       throw error;
     });

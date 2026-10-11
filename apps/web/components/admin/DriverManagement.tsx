@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "../AdminDashboard.module.css";
-import { FormModal, PanelHead, TableMessage, badgeClass } from "./ui";
+import { FormModal, PanelHead, TableMessage, TripStatus } from "./ui";
 import type { BadgeVariant } from "@/lib/adminData";
 import {
   createDriver,
@@ -16,7 +16,7 @@ import {
   type Vehicle,
 } from "@/lib/api/fleet";
 
-// "On Trip" will be derived from trip assignments once trips exist; this is the driver's own availability.
+// The driver's own availability. "On Trip" is shown instead while a confirmed booking is in progress.
 const STATUS: Record<DriverStatus, { label: string; variant: BadgeVariant }> = {
   active: { label: "Available", variant: "success" },
   off_duty: { label: "Off Duty", variant: "muted" },
@@ -177,7 +177,7 @@ export default function DriverManagement({ title, description, showToast }: Prop
             <tr>
               <th>Driver</th>
               <th>Phone</th>
-              <th>Assigned vehicle</th>
+              <th>Usual vehicle</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -206,7 +206,12 @@ export default function DriverManagement({ title, description, showToast }: Prop
                     )}
                   </td>
                   <td>
-                    <span className={badgeClass(STATUS[driver.status].variant)}>{STATUS[driver.status].label}</span>
+                    <TripStatus
+                      own={STATUS[driver.status]}
+                      busyLabel="On Trip"
+                      currentTrip={driver.currentTrip}
+                      nextTrip={driver.nextTrip}
+                    />
                   </td>
                   <td>
                     <div className={styles.rowActions}>
@@ -273,7 +278,7 @@ export default function DriverManagement({ title, description, showToast }: Prop
         </div>
         <div className={styles.grid2}>
           <div className={styles.field}>
-            <label htmlFor="driver-vehicle">Assigned vehicle</label>
+            <label htmlFor="driver-vehicle">Usual vehicle</label>
             <select id="driver-vehicle" value={form.vehicleId} onChange={(e) => set("vehicleId", e.target.value)}>
               <option value="">Unassigned</option>
               {vehicleOptions.map((vehicle) => (

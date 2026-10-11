@@ -65,6 +65,7 @@ src/
   health/               GET /v1/health
   reservation-options/  GET /v1/reservation-options (public)
   pricing/              POST /v1/quotes (public); quote.ts holds the pricing rules, unit-tested
+  bookings/             POST /v1/bookings (public) + the staff Bookings Queue; holds a vehicle per booking
   vehicle-types/        customer-facing vehicle types (read)
   payment-methods/      payment methods (read)
   fares/                route pricing: base fare per airport and area (admin)
@@ -84,16 +85,21 @@ section 7.1 of the design doc.
 | GET | `/v1/reservation-options` | Public. Vehicle types, payment methods, airports, areas (regions with a fare) and add-ons. A vehicle type is listed only while the fleet has an Available vehicle of its class |
 | POST | `/v1/auth/login` | Demo admin sign-in: `{ email, password }` → `{ accessToken, expiresAt, user }` (12 h). Wrong credentials → 401; demo login not configured → 503 |
 | GET | `/v1/auth/me` | The signed-in admin (`Authorization: Bearer <token>`), or `authDisabled: true` in local development |
+| POST | `/v1/bookings` | Public. The reservation form's "Confirm reservation": the quote fields plus `direction`, `address`, passenger and contact details. The price is recalculated server-side and stored with the booking. Status starts as `new` and a vehicle of the type's class is held from the pickup time for `HOLD_HOURS` (3 h, `bookings.service.ts`). No vehicle free at that time → 409. Returns the booking number (`GI-YYMM-NNNN`) and price |
+| GET | `/v1/admin/bookings`, `/v1/admin/bookings/:id` | Staff queue: new requests first, then by pickup time |
+| GET | `/v1/admin/bookings/:id/assignment-options` | Vehicles (Available, of the booking's class) and drivers (active) with no other confirmed booking overlapping its time; each vehicle carries its `usualDriverId` |
+| POST | `/v1/admin/bookings/:id/confirm` | `new` → `confirmed`. Body `{ vehicleId, driverId, finalTotalJpy? }`: assigns the vehicle and driver for the trip. Either one not free → 422, or 409 if taken a moment ago (exclusion constraints `bookings_vehicle_no_overlap` / `bookings_driver_no_overlap`). `finalTotalJpy` is required for quote-required bookings and refused for fixed-price ones. Not `new` any more → 409 |
+| POST | `/v1/admin/bookings/:id/cancel` | `new` or `confirmed` → `cancelled`; releases the held vehicle and the assigned vehicle and driver. Already cancelled → 409 |
 | POST | `/v1/quotes` | Public. Prices a trip from `airportId`, `serviceRegionId`, `vehicleTypeId`, `paymentMethodId`, `pickupDate`, `pickupTime` (Tokyo time) and optional `addOns: [{ addOnId, quantity }]`. Returns the line items, `totalJpy` and `quoteRequired` (then `totalJpy` is the "from" price). A past pickup, unknown ids or too many of an add-on → 422 |
 | GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
 | GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
-| GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its driver. Status `retired` keeps history instead |
+| GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its usual driver; a vehicle that has bookings can't be deleted (409, retire it instead). Responses include `currentTrip` and `nextTrip`, derived from confirmed bookings |
 | GET | `/v1/admin/fares` | Route pricing: every airport ⇄ area base fare, in price-sheet order |
 | GET, PATCH | `/v1/admin/fares/:id` | Edit `zone`, `priceJpy` (`null` = quote on request), `minPriceJpy` ("from" price, quote routes only), `isActive` (hide from the booking form). No create/delete |
 | GET | `/v1/admin/surcharges` | The whole "Additional Cost" sheet: vehicle surcharges, pickup-time windows, last-minute fee, extras, payment fees |
 | PATCH | `/v1/admin/surcharges/{vehicle-types,pickup-times,last-minute,add-ons,payment-methods}/:id` | Edit one row; returns the whole sheet. Pickup-time windows can't overlap (422, serialized by an advisory lock). Pickup-time labels are names only; the window is appended where customers see it. No create/delete |
 | GET, POST | `/v1/admin/drivers` | Optional `vehicleId`; a vehicle belongs to one driver at most (409) |
-| GET, PATCH, DELETE | `/v1/admin/drivers/:id` | `vehicleId: null` unassigns. New assignments to a retired vehicle → 422 |
+| GET, PATCH, DELETE | `/v1/admin/drivers/:id` | `vehicleId` is the driver's usual vehicle (`null` unassigns; a retired vehicle → 422). A driver who has bookings can't be deleted (409, set inactive instead). Responses include `currentTrip` and `nextTrip` |
 
 All `/v1/admin/*` routes go through `AdminAuthGuard`. They need `Authorization: Bearer <token>` from
 `POST /v1/auth/login`, unless `AUTH_DISABLED=true` (development only). Without the demo-login variables

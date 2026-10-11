@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import {
+  ASSIGNED_TRIP_COLUMNS,
+  assignedTripJoins,
+  toAssignedTrips,
+  type AssignedTrip,
+  type AssignedTripColumns,
+} from '../bookings/assigned-trips.js';
 import { DatabaseService, type Queryable } from '../database/database.service.js';
 import { buildSetClause } from '../database/set-clause.js';
 import type { CreateDriverDto, DriverStatus } from './dto/create-driver.dto.js';
 import type { UpdateDriverDto } from './dto/update-driver.dto.js';
 
-interface DriverRow {
+interface DriverRow extends AssignedTripColumns {
   id: string;
   full_name: string;
   phone: string;
@@ -24,7 +31,11 @@ export interface Driver {
   phone: string;
   licenseNumber: string | null;
   status: DriverStatus;
+  /** The vehicle this driver usually drives. A booking can assign them a different one. */
   vehicle: { id: string; model: string; plateNumber: string; vehicleClassName: string } | null;
+  /** From confirmed bookings: the trip this driver is on right now ("On Trip"), and their next one. */
+  currentTrip: AssignedTrip | null;
+  nextTrip: AssignedTrip | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,10 +43,10 @@ export interface Driver {
 const SELECT_DRIVERS = `
   SELECT d.id, d.full_name, d.phone, d.license_number, d.status, d.created_at, d.updated_at,
          v.id AS vehicle_id, v.model AS vehicle_model, v.plate_number AS vehicle_plate_number,
-         c.name AS vehicle_class_name
+         c.name AS vehicle_class_name,${ASSIGNED_TRIP_COLUMNS}
   FROM drivers d
   LEFT JOIN vehicles v ON v.id = d.vehicle_id
-  LEFT JOIN vehicle_classes c ON c.id = v.vehicle_class_id`;
+  LEFT JOIN vehicle_classes c ON c.id = v.vehicle_class_id${assignedTripJoins('driver_id', 'd.id')}`;
 
 const LIST_DRIVERS = `${SELECT_DRIVERS}
   ORDER BY d.full_name, d.created_at`;
@@ -85,6 +96,7 @@ function toDriver(row: DriverRow): Driver {
             plateNumber: row.vehicle_plate_number ?? '',
             vehicleClassName: row.vehicle_class_name ?? '',
           },
+    ...toAssignedTrips(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

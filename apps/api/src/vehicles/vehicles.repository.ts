@@ -1,4 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import {
+  ASSIGNED_TRIP_COLUMNS,
+  assignedTripJoins,
+  toAssignedTrips,
+  type AssignedTrip,
+  type AssignedTripColumns,
+} from '../bookings/assigned-trips.js';
 import { DatabaseService, type Queryable } from '../database/database.service.js';
 import { buildSetClause } from '../database/set-clause.js';
 import type { CreateVehicleDto, VehicleStatus } from './dto/create-vehicle.dto.js';
@@ -10,7 +17,7 @@ interface VehicleClassRow {
   name: string;
 }
 
-interface VehicleRow {
+interface VehicleRow extends AssignedTripColumns {
   id: string;
   model: string;
   plate_number: string;
@@ -41,6 +48,9 @@ export interface Vehicle {
   capacityBags: number;
   status: VehicleStatus;
   assignedDriver: { id: string; fullName: string } | null;
+  /** From confirmed bookings: the trip this vehicle is on right now ("In Use"), and its next one. */
+  currentTrip: AssignedTrip | null;
+  nextTrip: AssignedTrip | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,10 +64,10 @@ const SELECT_VEHICLES = `
   SELECT v.id, v.model, v.plate_number, v.capacity_pax, v.capacity_bags, v.status,
          v.created_at, v.updated_at,
          c.id AS class_id, c.code AS class_code, c.name AS class_name,
-         d.id AS driver_id, d.full_name AS driver_full_name
+         d.id AS driver_id, d.full_name AS driver_full_name,${ASSIGNED_TRIP_COLUMNS}
   FROM vehicles v
   JOIN vehicle_classes c ON c.id = v.vehicle_class_id
-  LEFT JOIN drivers d ON d.vehicle_id = v.id`;
+  LEFT JOIN drivers d ON d.vehicle_id = v.id${assignedTripJoins('vehicle_id', 'v.id')}`;
 
 const LIST_VEHICLES = `${SELECT_VEHICLES}
   ORDER BY c.sort_order, v.model, v.plate_number`;
@@ -96,6 +106,7 @@ function toVehicle(row: VehicleRow): Vehicle {
     status: row.status,
     assignedDriver:
       row.driver_id === null ? null : { id: row.driver_id, fullName: row.driver_full_name ?? '' },
+    ...toAssignedTrips(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

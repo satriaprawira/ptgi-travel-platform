@@ -9,6 +9,6 @@ import { QuotesController } from './quotes.controller.js';
   imports: [VehicleTypesModule, PaymentMethodsModule],
   controllers: [QuotesController],
   providers: [PricingRepository, PricingService],
-  exports: [PricingRepository],
+  exports: [PricingRepository, PricingService],
 })
 export class PricingModule {}

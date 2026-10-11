@@ -11,6 +11,14 @@ export interface VehicleClass {
   name: string;
 }
 
+/** A confirmed booking assigned to a vehicle or driver. Dates and times are Tokyo local. */
+export interface AssignedTrip {
+  reference: string;
+  pickupDate: string; // "2026-10-16"
+  pickupTime: string; // "14:30"
+  untilTime: string; // "17:30"
+}
+
 export interface Vehicle {
   id: string;
   model: string;
@@ -20,6 +28,9 @@ export interface Vehicle {
   capacityBags: number;
   status: VehicleStatus;
   assignedDriver: { id: string; fullName: string } | null;
+  /** The trip it is on right now, and its next confirmed trip. */
+  currentTrip: AssignedTrip | null;
+  nextTrip: AssignedTrip | null;
 }
 
 export interface VehicleInput {
@@ -38,6 +49,9 @@ export interface Driver {
   licenseNumber: string | null;
   status: DriverStatus;
   vehicle: { id: string; model: string; plateNumber: string; vehicleClassName: string } | null;
+  /** The trip they are on right now, and their next confirmed trip. */
+  currentTrip: AssignedTrip | null;
+  nextTrip: AssignedTrip | null;
 }
 
 export interface DriverInput {
