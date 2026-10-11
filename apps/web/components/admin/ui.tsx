@@ -3,6 +3,8 @@
 import type { FormEvent, ReactNode } from "react";
 import styles from "../AdminDashboard.module.css";
 import type { BadgeVariant } from "@/lib/adminData";
+import { tripDateTime } from "@/lib/api/format";
+import type { AssignedTrip } from "@/lib/api/fleet";
 
 export function badgeClass(variant: BadgeVariant) {
   const variantClass = {
@@ -78,5 +80,33 @@ export function FormModal({ open, title, error, saving, onClose, onSubmit, child
         </div>
       </form>
     </div>
+  );
+}
+
+interface TripStatusProps {
+  /** The vehicle's or driver's own status (Available, Maintenance, Off Duty, …). */
+  own: { label: string; variant: BadgeVariant };
+  /** Shown instead of `own` while a confirmed booking is in progress: "In Use" / "On Trip". */
+  busyLabel: string;
+  currentTrip: AssignedTrip | null;
+  nextTrip: AssignedTrip | null;
+}
+
+/** Status cell for the fleet tables: own status, overridden by the trip in progress, plus the next trip. */
+export function TripStatus({ own, busyLabel, currentTrip, nextTrip }: TripStatusProps) {
+  return (
+    <>
+      <span className={badgeClass(currentTrip ? "accent" : own.variant)}>{currentTrip ? busyLabel : own.label}</span>
+      {currentTrip && (
+        <span className={styles.cellSub}>
+          {currentTrip.reference} · until {currentTrip.untilTime}
+        </span>
+      )}
+      {nextTrip && (
+        <span className={styles.cellSub}>
+          Next: {tripDateTime(nextTrip.pickupDate, nextTrip.pickupTime)} · {nextTrip.reference}
+        </span>
+      )}
+    </>
   );
 }

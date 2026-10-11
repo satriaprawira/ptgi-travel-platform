@@ -6,6 +6,7 @@ import styles from "./AdminDashboard.module.css";
 import { getSession, logout, type Session } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { SESSION_EXPIRED_EVENT } from "@/lib/api/token";
+import BookingsQueue from "./admin/BookingsQueue";
 import DriverManagement from "./admin/DriverManagement";
 import RoutePricing from "./admin/RoutePricing";
 import SurchargeEditor from "./admin/SurchargeEditor";
@@ -13,7 +14,6 @@ import VehicleManagement from "./admin/VehicleManagement";
 import { PanelHead, badgeClass } from "./admin/ui";
 import {
   adminUsers,
-  bookings,
   highSeasonRows,
   modalForms,
   notificationTemplates,
@@ -228,7 +228,7 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
 };
 
-const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["drivers", "vehicles", "routes", "surcharge"]);
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["bookings", "drivers", "vehicles", "routes", "surcharge"]);
 
 const LOGIN_URL = "/login?next=/admin";
 
@@ -392,63 +392,7 @@ export default function AdminDashboard() {
             )}
 
             {activePanel === "bookings" && (
-              <>
-                <div className={styles.filters}>
-                  <input type="text" placeholder="Search passenger or booking ID…" />
-                  <select>
-                    <option>All statuses</option>
-                    <option>Needs action</option>
-                    <option>Waiting list</option>
-                    <option>Confirmed</option>
-                    <option>Cancelled</option>
-                  </select>
-                  <select>
-                    <option>Today</option>
-                    <option>Next 7 days</option>
-                    <option>This month</option>
-                  </select>
-                </div>
-
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Booking</th>
-                        <th>Passenger</th>
-                        <th>Route</th>
-                        <th>Pick-up</th>
-                        <th>Car type</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookings.map((booking) => (
-                        <tr key={booking.id}>
-                          <td className={styles.mono}>{booking.id}</td>
-                          <td>
-                            {booking.passenger}
-                            <span className={styles.cellSub}>{booking.origin}</span>
-                          </td>
-                          <td>{booking.route}</td>
-                          <td>{booking.pickup}</td>
-                          <td>{booking.carType}</td>
-                          <td>
-                            <span className={badgeClass(booking.statusVariant)}>{booking.status}</span>
-                          </td>
-                          <td>
-                            <div className={styles.rowActions}>
-                              <button className={styles.iconBtn} onClick={() => showToast(booking.actionToast)}>
-                                {booking.actionLabel}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+              <BookingsQueue title={meta.title} description={meta.description} showToast={showToast} />
             )}
 
             {activePanel === "availability" && (

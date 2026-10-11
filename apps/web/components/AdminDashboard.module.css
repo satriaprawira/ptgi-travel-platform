@@ -291,6 +291,11 @@
 }
 .filters input[type="text"] {
   min-width: 220px;
+  width: auto;
+  flex: 1 1 220px;
+}
+.filters select {
+  width: auto;
 }
 
 /* ---------- Form fields (used in cards + modal) ---------- */
@@ -688,5 +693,60 @@
 @media (max-width: 640px) {
   .userEmail {
     display: none;
+  }
+}
+
+/* ---------- Bookings Queue: expanded details row ---------- */
+.bookingDetails {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
+  padding: 6px 4px 10px;
+  font-size: 13px;
+}
+.bookingDetails dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  align-content: start;
+}
+.bookingDetails dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.bookingDetails dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.bookingDetails ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  color: var(--ink-soft);
+}
+.bookingDetails li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bookingTotal {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1.5px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .bookingDetails,
+  .bookingDetails dl {
+    grid-template-columns: 1fr;
   }
 }

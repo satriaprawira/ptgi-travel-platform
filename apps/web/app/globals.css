@@ -457,6 +457,71 @@ select {
   outline: 2px solid var(--indigo);
   outline-offset: 3px;
 }
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.submit-error {
+  margin: 14px 0 0;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+}
+
+/* Shown in place of the form once the booking is saved */
+.booking-done {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+.booking-done h2,
+.booking-done p {
+  margin: 0;
+}
+.booking-done p {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.booking-done-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.booking-ref {
+  font-family: var(--font-mono), monospace;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.booking-summary {
+  margin: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+}
+.booking-summary dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.booking-summary dd {
+  margin: 3px 0 0;
+  color: var(--ink);
+}
+@media (max-width: 560px) {
+  .booking-summary {
+    grid-template-columns: 1fr;
+  }
+}
 .form-footnote {
   font-size: 12.5px;
   color: var(--ink-faint);

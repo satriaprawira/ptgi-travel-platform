@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "../AdminDashboard.module.css";
-import { FormModal, PanelHead, TableMessage, badgeClass } from "./ui";
+import { FormModal, PanelHead, TableMessage, TripStatus } from "./ui";
 import type { BadgeVariant } from "@/lib/adminData";
 import {
   createVehicle,
@@ -179,7 +179,7 @@ export default function VehicleManagement({ title, description, showToast }: Pro
               <th>Plate</th>
               <th>Type</th>
               <th>Capacity</th>
-              <th>Driver</th>
+              <th>Usual driver</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -200,7 +200,12 @@ export default function VehicleManagement({ title, description, showToast }: Pro
                   </td>
                   <td>{vehicle.assignedDriver?.fullName ?? "—"}</td>
                   <td>
-                    <span className={badgeClass(STATUS[vehicle.status].variant)}>{STATUS[vehicle.status].label}</span>
+                    <TripStatus
+                      own={STATUS[vehicle.status]}
+                      busyLabel="In Use"
+                      currentTrip={vehicle.currentTrip}
+                      nextTrip={vehicle.nextTrip}
+                    />
                   </td>
                   <td>
                     <div className={styles.rowActions}>

@@ -53,7 +53,13 @@ export class DriversService {
   }
 
   async delete(id: string): Promise<void> {
-    const found = await this.drivers.delete(id);
+    const found = await this.drivers.delete(id).catch((error: unknown) => {
+      // A driver who has been assigned to a booking stays on record.
+      if (isPgError(error, PgErrorCode.ForeignKeyViolation)) {
+        throw new ConflictException('This driver has bookings; set them to Inactive instead of deleting');
+      }
+      throw error;
+    });
     if (!found) throw new NotFoundException(`Driver ${id} not found`);
   }
 
