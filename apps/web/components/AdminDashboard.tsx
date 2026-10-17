@@ -6,6 +6,7 @@ import styles from "./AdminDashboard.module.css";
 import { getSession, logout, type Session } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { SESSION_EXPIRED_EVENT } from "@/lib/api/token";
+import AvailabilityCalendar from "./admin/AvailabilityCalendar";
 import BookingsQueue from "./admin/BookingsQueue";
 import DriverManagement from "./admin/DriverManagement";
 import RoutePricing from "./admin/RoutePricing";
@@ -17,9 +18,6 @@ import {
   highSeasonRows,
   modalForms,
   notificationTemplates,
-  scheduleAxis,
-  todaySchedule,
-  waitlist,
   type ModalKind,
 } from "@/lib/adminData";
 
@@ -60,7 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       {
         id: "availability",
-        label: "Availability & Waitlist",
+        label: "Availability",
         icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -191,8 +189,8 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
       "Every reservation from customer request through confirmation – review, quote, and act from one place.",
   },
   availability: {
-    title: "Availability & Waitlist",
-    description: "Today's driver and vehicle schedule, plus bookings waiting for a slot to open up.",
+    title: "Availability",
+    description: "The week's confirmed trips on a calendar, for the whole fleet or one vehicle or driver.",
   },
   // Live panels (data from the API): they render their own head and "Add" action.
   drivers: {
@@ -228,7 +226,7 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
 };
 
-const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["bookings", "drivers", "vehicles", "routes", "surcharge"]);
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["bookings", "availability", "drivers", "vehicles", "routes", "surcharge"]);
 
 const LOGIN_URL = "/login?next=/admin";
 
@@ -396,80 +394,7 @@ export default function AdminDashboard() {
             )}
 
             {activePanel === "availability" && (
-              <>
-                <div className={styles.card}>
-                  <h2>Today&apos;s schedule</h2>
-                  <div className={styles.cardSub}>06:00 – 22:00 operating window</div>
-
-                  {todaySchedule.map((row) => (
-                    <div className={styles.timelineRow} key={row.driver}>
-                      <div className={styles.timelineDriver}>
-                        {row.driver}
-                        <span className={styles.cellSub}>{row.vehicle}</span>
-                      </div>
-                      <div>
-                        <div className={styles.timelineTrack}>
-                          {row.blocks.map((block, index) => (
-                            <div
-                              key={index}
-                              className={`${styles.timelineBlock} ${
-                                block.variant === "booked" ? styles.timelineBlockBooked : styles.timelineBlockHold
-                              }`}
-                              style={{ left: block.left, width: block.width }}
-                            >
-                              {block.label}
-                            </div>
-                          ))}
-                        </div>
-                        <div className={styles.timelineAxis}>
-                          {scheduleAxis.map((mark) => (
-                            <span key={mark}>{mark}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className={styles.card}>
-                  <h2>Waitlist queue</h2>
-                  <div className={styles.cardSub}>Bookings held back by an availability conflict, ordered by wait time</div>
-                  <div className={styles.tableWrap}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Pos.</th>
-                          <th>Booking</th>
-                          <th>Passenger</th>
-                          <th>Requested</th>
-                          <th>Reason</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {waitlist.map((entry) => (
-                          <tr key={entry.bookingId}>
-                            <td>
-                              <span className={styles.queuePosition}>{entry.position}</span>
-                            </td>
-                            <td className={styles.mono}>{entry.bookingId}</td>
-                            <td>{entry.passenger}</td>
-                            <td>{entry.requested}</td>
-                            <td>{entry.reason}</td>
-                            <td>
-                              <div className={styles.rowActions}>
-                                <button className={styles.iconBtn} onClick={() => showToast(entry.actionToast)}>
-                                  {entry.actionLabel}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
+              <AvailabilityCalendar title={meta.title} description={meta.description} />
             )}
 
             {activePanel === "drivers" && (

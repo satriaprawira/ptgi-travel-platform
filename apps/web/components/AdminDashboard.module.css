@@ -353,6 +353,7 @@
   font-size: 12px;
   color: var(--ink-soft);
   font-weight: 500;
+  white-space: nowrap;
 }
 .iconBtn:hover {
   border-color: var(--indigo);
@@ -365,75 +366,6 @@
   margin-top: 6px;
 }
 
-/* ---------- Availability timeline ---------- */
-.timelineRow {
-  display: grid;
-  grid-template-columns: 170px 1fr;
-  gap: 16px;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-}
-.timelineRow:last-child {
-  border-bottom: none;
-}
-.timelineDriver {
-  font-size: 13.5px;
-  font-weight: 600;
-}
-.timelineDriver .cellSub {
-  margin-top: 1px;
-}
-.timelineTrack {
-  position: relative;
-  height: 26px;
-  background: var(--muted-soft);
-  border-radius: 7px;
-  overflow: hidden;
-}
-.timelineBlock {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  border-radius: 5px;
-  font-size: 10.5px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.timelineBlockBooked {
-  background: var(--indigo);
-}
-.timelineBlockHold {
-  background: var(--accent);
-}
-.timelineAxis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  margin-top: 6px;
-  font-family: var(--font-mono), monospace;
-}
-
-/* ---------- Waitlist queue ---------- */
-.queuePosition {
-  font-family: var(--font-mono), monospace;
-  font-weight: 600;
-  color: var(--indigo);
-  background: var(--indigo-soft);
-  border-radius: 8px;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12.5px;
-}
 
 /* ---------- Notification template cards ---------- */
 .templateCard {
@@ -596,10 +528,6 @@
   .content {
     padding: 20px 16px 60px;
   }
-  .timelineRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
 }
 /* ---------- Live data states (Driver / Vehicle Management) ---------- */
 .iconBtnDanger:hover {
@@ -749,4 +677,176 @@
   .bookingDetails dl {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Availability: weekly calendar ---------- */
+.filters .dateInput {
+  font-family: var(--font-body), sans-serif;
+  font-size: 13.5px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+  width: auto;
+}
+.calToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 8px;
+}
+.calToolbar h2 {
+  margin: 0;
+}
+.calToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 14px;
+  cursor: pointer;
+}
+/* Scrolls vertically through the day; scrolls sideways on narrow screens instead of squeezing 7 days. */
+.calScroll {
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-top: 14px;
+}
+.calGrid {
+  display: grid;
+  grid-template-columns: 54px repeat(7, minmax(104px, 1fr));
+  min-width: 782px;
+}
+.calCorner,
+.calDayHead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.calDayHead {
+  padding: 9px 8px;
+  text-align: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  border-left: 1px solid var(--line);
+}
+.calDayHead strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  margin-left: 2px;
+}
+.calToday,
+.calToday strong {
+  color: var(--accent);
+}
+.calHours {
+  position: relative;
+}
+.calHours span {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.calHours span:first-child {
+  display: none; /* 00:00 would sit under the sticky header */
+}
+.calDay {
+  position: relative;
+  border-left: 1px solid var(--line);
+  /* one line per hour */
+  background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+}
+.calDayToday {
+  background-color: var(--indigo-soft);
+}
+.calNow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 2;
+}
+.calBlock {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: var(--indigo);
+  color: #fff;
+  font: 11px/1.25 var(--font-body), sans-serif;
+  text-align: left;
+  overflow: hidden;
+  cursor: default;
+  z-index: 1;
+}
+.calBlock b {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.calBlock span {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.calBlockHold {
+  background: var(--accent);
+}
+.calBlock:hover,
+.calBlock:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  z-index: 2;
+}
+.calCard {
+  position: fixed;
+  z-index: 60;
+  width: 290px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -12px rgba(20, 33, 61, 0.35);
+  padding: 14px 16px;
+  font-size: 13px;
+  pointer-events: none;
+}
+.calCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.calCard dl {
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+}
+.calCard dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  padding-top: 1px;
+}
+.calCard dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }

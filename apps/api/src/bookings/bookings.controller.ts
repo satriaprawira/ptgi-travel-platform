@@ -1,8 +1,20 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminAuthGuard } from '../common/guards/admin-auth.guard.js';
 import { BookingsService } from './bookings.service.js';
 import { ConfirmBookingDto } from './dto/confirm-booking.dto.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
+import { ScheduleQueryDto } from './dto/schedule-query.dto.js';
 
 /** Public: the reservation form's "Confirm reservation". */
 @Controller('bookings')
@@ -26,6 +38,17 @@ export class AdminBookingsController {
     return this.bookings.list();
   }
 
+  // Declared before ':id' so "schedule" and "waitlist" aren't read as booking ids.
+  @Get('schedule')
+  schedule(@Query() query: ScheduleQueryDto) {
+    return this.bookings.schedule(query.date, query.days);
+  }
+
+  @Get('waitlist')
+  waitlist() {
+    return this.bookings.waitlist();
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.bookings.get(id);
@@ -40,6 +63,12 @@ export class AdminBookingsController {
   @HttpCode(HttpStatus.OK)
   confirm(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ConfirmBookingDto) {
     return this.bookings.confirm(id, dto);
+  }
+
+  @Post(':id/promote')
+  @HttpCode(HttpStatus.OK)
+  promote(@Param('id', ParseUUIDPipe) id: string) {
+    return this.bookings.promote(id);
   }
 
   @Post(':id/cancel')

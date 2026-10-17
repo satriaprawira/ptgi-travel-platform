@@ -1,76 +1,7 @@
 export type BadgeVariant = "indigo" | "accent" | "success" | "muted";
 
-// Bookings are live data now: see lib/api/bookings.ts and components/admin/BookingsQueue.tsx.
-
-export interface ScheduleBlock {
-  variant: "booked" | "hold";
-  left: string;
-  width: string;
-  label: string;
-}
-
-export interface DriverSchedule {
-  driver: string;
-  vehicle: string;
-  blocks: ScheduleBlock[];
-}
-
-export const scheduleAxis = ["06", "10", "14", "18", "22"];
-
-export const todaySchedule: DriverSchedule[] = [
-  {
-    driver: "Hiroshi Sato",
-    vehicle: "Alphard · JP-3021",
-    blocks: [
-      { variant: "booked", left: "12%", width: "18%", label: "09:00–11:30" },
-      { variant: "hold", left: "55%", width: "12%", label: "Hold" },
-    ],
-  },
-  {
-    driver: "Kenji Watanabe",
-    vehicle: "Standard · JP-1187",
-    blocks: [
-      { variant: "booked", left: "4%", width: "14%", label: "07:00–09:00" },
-      { variant: "booked", left: "40%", width: "22%", label: "13:30–17:00" },
-    ],
-  },
-  {
-    driver: "Yuki Nakamura",
-    vehicle: "Grand Cabin · JP-4402",
-    blocks: [{ variant: "booked", left: "70%", width: "20%", label: "18:00–20:30" }],
-  },
-];
-
-export interface WaitlistEntry {
-  position: number;
-  bookingId: string;
-  passenger: string;
-  requested: string;
-  reason: string;
-  actionLabel: string;
-  actionToast: string;
-}
-
-export const waitlist: WaitlistEntry[] = [
-  {
-    position: 1,
-    bookingId: "GI-2608-098",
-    passenger: "James Carter",
-    requested: "07 Sep · 16:00",
-    reason: "No Grand Cabin free",
-    actionLabel: "Offer alternative",
-    actionToast: "Alternative time offered to customer",
-  },
-  {
-    position: 2,
-    bookingId: "GI-2608-085",
-    passenger: "Nadia Putri",
-    requested: "08 Sep · 09:30",
-    reason: "No driver in window",
-    actionLabel: "Notify when free",
-    actionToast: "Will notify when a slot opens",
-  },
-];
+// Bookings, the weekly schedule and the waitlist are live data now: see lib/api/bookings.ts and
+// components/admin/BookingsQueue.tsx, AvailabilityCalendar.tsx.
 
 // Live data now, see lib/api/ and components/admin/: drivers and vehicles (fleet.ts),
 // route pricing (fares.ts) and surcharges (surcharges.ts).

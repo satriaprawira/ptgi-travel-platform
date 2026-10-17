@@ -56,13 +56,16 @@ export class BookingsService {
     const id = await this.db.transaction(async (client) => {
       await this.bookings.lockVehicleClass(client, vehicleClass.id);
       const { fleet, held } = await this.bookings.countFleetAndHeld(client, vehicleClass.id, pickupAt, holdUntil);
-      if (held >= fleet) {
+      const free = held < fleet;
+      if (!free && !dto.joinWaitlist) {
         throw new ConflictException(
-          `No ${vehicleClass.name} is free at that time. Please choose another time or car type.`,
+          `No ${vehicleClass.name} is free at that time. Please choose another time or car type, or join the waiting list.`,
         );
       }
       return this.bookings.insert(client, {
         dto,
+        // A customer who asked for the waiting list still gets a normal booking if a car is free.
+        status: free ? 'new' : 'waitlisted',
         vehicleClassId: vehicleClass.id,
         pickupAt,
         holdUntil,
@@ -97,6 +100,57 @@ export class BookingsService {
     return booking;
   }
 
+  /** New requests and confirmed trips that occupy a vehicle during `days` Tokyo calendar days from `date`. */
+  schedule(date: string, days = 1): Promise<Booking[]> {
+    const start = tokyoInstant(date, '00:00');
+    if (!start) throw new UnprocessableEntityException('date is not a valid calendar date');
+    return this.bookings.listSchedule(start, new Date(start.getTime() + days * 24 * 3_600_000));
+  }
+
+  /** The waiting list in the order people joined, each marked with whether a vehicle is free now. */
+  async waitlist(): Promise<(Booking & { slotFree: boolean })[]> {
+    const waiting = await this.bookings.listWaitlist();
+    return Promise.all(
+      waiting.map(async (booking) => {
+        const window = await this.bookings.findHoldWindow(booking.id);
+        const { fleet, held } = await this.bookings.countFleetAndHeld(
+          this.db,
+          window!.vehicleClassId,
+          booking.pickupAt,
+          booking.holdUntil,
+        );
+        return { ...booking, slotFree: held < fleet };
+      }),
+    );
+  }
+
+  /**
+   * Moves a waitlisted booking into the queue as a new request, which holds a vehicle for it.
+   * Refused while no vehicle of its class is free at that time.
+   */
+  async promote(id: string): Promise<Booking> {
+    const booking = await this.get(id);
+    if (booking.status !== 'waitlisted') {
+      throw new ConflictException(`Booking ${booking.reference} is not on the waiting list (it is ${booking.status})`);
+    }
+    const window = await this.bookings.findHoldWindow(id);
+    await this.db.transaction(async (client) => {
+      await this.bookings.lockVehicleClass(client, window!.vehicleClassId);
+      const { fleet, held } = await this.bookings.countFleetAndHeld(
+        client,
+        window!.vehicleClassId,
+        booking.pickupAt,
+        booking.holdUntil,
+      );
+      if (held >= fleet) {
+        throw new ConflictException(`No ${booking.vehicleClassName} is free at that time yet`);
+      }
+      const changed = await this.bookings.promote(client, id);
+      if (!changed) throw new ConflictException(`Booking ${booking.reference} was changed by someone else`);
+    });
+    return this.get(id);
+  }
+
   /** The vehicles and drivers staff can assign to this booking: free for its whole time window. */
   async assignmentOptions(id: string): Promise<AssignmentOptions> {
     await this.get(id);
@@ -109,6 +163,11 @@ export class BookingsService {
    */
   async confirm(id: string, dto: ConfirmBookingDto): Promise<Booking> {
     const booking = await this.get(id);
+    if (booking.status === 'waitlisted') {
+      throw new ConflictException(
+        `Booking ${booking.reference} is on the waiting list; move it to bookings first, once a vehicle is free`,
+      );
+    }
     if (booking.status !== 'new') {
       throw new ConflictException(`Booking ${booking.reference} is already ${booking.status}`);
     }
@@ -147,7 +206,7 @@ export class BookingsService {
     return this.get(id);
   }
 
-  /** Cancels a new or confirmed booking, which frees its vehicle and driver for that time. */
+  /** Cancels a new, confirmed or waitlisted booking, which frees anything it held. */
   async cancel(id: string): Promise<Booking> {
     const booking = await this.get(id);
     const changed = await this.bookings.cancel(id);

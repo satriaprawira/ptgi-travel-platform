@@ -10,6 +10,8 @@ import {
   confirmBooking,
   getAssignmentOptions,
   listBookings,
+  listWaitlist,
+  promoteBooking,
   type AdminBooking,
   type AssignmentOptions,
   type BookingStatus,
@@ -18,6 +20,7 @@ import {
 const STATUS: Record<BookingStatus, { label: string; variant: BadgeVariant }> = {
   new: { label: "New Request", variant: "indigo" },
   confirmed: { label: "Confirmed", variant: "success" },
+  waitlisted: { label: "Waiting List", variant: "accent" },
   cancelled: { label: "Cancelled", variant: "muted" },
 };
 
@@ -46,6 +49,8 @@ interface Props {
 
 export default function BookingsQueue({ title, description, showToast }: Props) {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  // Waitlisted booking id → a car of its type is free for its time right now.
+  const [slotFree, setSlotFree] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -65,7 +70,9 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
     setLoading(true);
     setLoadError(null);
     try {
-      setBookings(await listBookings());
+      const [all, waiting] = await Promise.all([listBookings(), listWaitlist()]);
+      setBookings(all);
+      setSlotFree(Object.fromEntries(waiting.map((booking) => [booking.id, booking.slotFree])));
     } catch (error) {
       setLoadError(errorMessage(error));
     } finally {
@@ -133,6 +140,21 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
     }
   };
 
+  // Waiting list → New Request: takes a hold on a car, so it only works once one is free.
+  const moveToBookings = async (booking: AdminBooking) => {
+    setBusyId(booking.id);
+    try {
+      await promoteBooking(booking.id);
+      showToast(`${booking.reference} is now a New Request; a car is held for it`);
+      await load();
+    } catch (error) {
+      showToast(errorMessage(error));
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const cancel = async (booking: AdminBooking) => {
     if (!window.confirm(`Cancel booking ${booking.reference} for ${booking.passengerName}? Its car and driver are released.`)) {
       return;
@@ -178,6 +200,7 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
           <option value="all">All statuses</option>
           <option value="new">New Request{newCount > 0 ? ` (${newCount})` : ""}</option>
           <option value="confirmed">Confirmed</option>
+          <option value="waitlisted">Waiting List</option>
           <option value="cancelled">Cancelled</option>
         </select>
         <button className={styles.btnSecondary} onClick={() => void load()} disabled={loading}>
@@ -224,6 +247,11 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                       {booking.status === "new" && booking.quoteRequired && (
                         <span className={styles.cellSub}>Needs a quote</span>
                       )}
+                      {booking.status === "waitlisted" && (
+                        <span className={styles.cellSub}>
+                          {slotFree[booking.id] ? "A car is free now" : `No ${booking.vehicleClassName} free yet`}
+                        </span>
+                      )}
                       {booking.status === "confirmed" && booking.vehicle && booking.driver && (
                         <span className={styles.cellSub}>
                           {booking.driver.fullName} · {booking.vehicle.plateNumber}
@@ -246,6 +274,16 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                             disabled={busyId === booking.id}
                           >
                             Confirm
+                          </button>
+                        )}
+                        {booking.status === "waitlisted" && (
+                          <button
+                            className={styles.iconBtn}
+                            onClick={() => void moveToBookings(booking)}
+                            disabled={!slotFree[booking.id] || busyId === booking.id}
+                            title={slotFree[booking.id] ? undefined : "No car of this type is free at that time yet"}
+                          >
+                            Move to bookings
                           </button>
                         )}
                         {booking.status !== "cancelled" && (
@@ -281,6 +319,10 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
             Confirming assigns a specific vehicle and driver; neither can then be given to another confirmed
             booking that overlaps. Cancelling releases them. Bookings with a &ldquo;please inquire&rdquo; item
             also need your quoted price.
+          </span>
+          <span>
+            A Waiting List request holds nothing: no car of its type was free. Once one is, Move to bookings turns
+            it into a New Request.
           </span>
         </p>
       )}
