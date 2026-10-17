@@ -3,7 +3,11 @@ import { DatabaseService, type Queryable } from '../database/database.service.js
 import type { QuoteLine } from '../pricing/quote.js';
 import type { CreateBookingDto, TripDirection } from './dto/create-booking.dto.js';
 
-export type BookingStatus = 'new' | 'confirmed' | 'cancelled';
+/**
+ * new: holds a vehicle of its class, waiting for staff. confirmed: a vehicle and driver are assigned.
+ * waitlisted: no vehicle was free; holds nothing until staff move it to 'new'. cancelled: holds nothing.
+ */
+export type BookingStatus = 'new' | 'confirmed' | 'waitlisted' | 'cancelled';
 
 export interface BookedAddOn {
   addOnId: string;
@@ -19,6 +23,7 @@ interface BookingRow {
   airport_code: string;
   airport_name: string;
   region_name: string;
+  vehicle_class_name: string;
   address: string;
   pickup_at: Date;
   hold_until: Date;
@@ -65,6 +70,8 @@ export interface Booking {
   direction: TripDirection;
   airport: { code: string; name: string };
   regionName: string;
+  /** The fleet type the hold counts against, e.g. "Grand Cabin". */
+  vehicleClassName: string;
   address: string;
   pickupAt: Date;
   holdUntil: Date;
@@ -111,6 +118,8 @@ export interface AssignmentOptions {
 
 export interface NewBooking {
   dto: CreateBookingDto;
+  /** 'new' takes a hold; 'waitlisted' is saved without one. */
+  status: 'new' | 'waitlisted';
   vehicleClassId: string;
   pickupAt: Date;
   holdUntil: Date;
@@ -138,7 +147,7 @@ const COUNT_FLEET_AND_HELD = `
   WITH overlapping AS (
     SELECT pickup_at, hold_until
     FROM bookings
-    WHERE vehicle_class_id = $1 AND status <> 'cancelled'
+    WHERE vehicle_class_id = $1 AND status IN ('new', 'confirmed')
       AND pickup_at < $3 AND hold_until > $2
   ), moments AS (
     SELECT $2::timestamptz AS at
@@ -165,7 +174,7 @@ const INSERT_BOOKING = `
     price_lines, add_ons, total_jpy, quote_required,
     salutation, passenger_name, booker_name, country_origin, passengers, luggage,
     age_adults, age_infants, age_children, email, phone_country_code, phone,
-    times_used, additional_requests, pet_info
+    times_used, additional_requests, pet_info, status
   ) VALUES (
     'GI-' || to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYMM') || '-'
           || lpad(nextval('booking_reference_seq')::text, 4, '0'),
@@ -174,13 +183,14 @@ const INSERT_BOOKING = `
     $11::jsonb, $12::jsonb, $13, $14,
     $15, $16, $17, $18, $19, $20,
     $21, $22, $23, $24, $25, $26,
-    $27, $28, $29
+    $27, $28, $29, $30::booking_status
   )
   RETURNING id`;
 
 const SELECT_BOOKINGS = `
   SELECT b.id, b.reference, b.status, b.direction,
          a.code AS airport_code, a.name AS airport_name, r.name AS region_name,
+         vc.name AS vehicle_class_name,
          b.address, b.pickup_at, b.hold_until,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD') AS pickup_date,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'HH24:MI') AS pickup_time,
@@ -195,12 +205,34 @@ const SELECT_BOOKINGS = `
   FROM bookings b
   JOIN airports a ON a.id = b.airport_id
   JOIN service_regions r ON r.id = b.service_region_id
+  JOIN vehicle_classes vc ON vc.id = b.vehicle_class_id
   LEFT JOIN vehicles v ON v.id = b.vehicle_id
   LEFT JOIN drivers d ON d.id = b.driver_id`;
 
 // Bookings that need staff attention first, then by pickup time.
 const LIST_BOOKINGS = `${SELECT_BOOKINGS}
   ORDER BY (b.status = 'new') DESC, b.pickup_at, b.created_at`;
+
+// Everything that occupies a vehicle during [$1, $2): new requests (a hold on the class) and
+// confirmed trips (a specific vehicle and driver).
+const LIST_SCHEDULE = `${SELECT_BOOKINGS}
+  WHERE b.status IN ('new', 'confirmed') AND b.pickup_at < $2 AND b.hold_until > $1
+  ORDER BY b.pickup_at, b.created_at`;
+
+// First come, first served.
+const LIST_WAITLIST = `${SELECT_BOOKINGS}
+  WHERE b.status = 'waitlisted'
+  ORDER BY b.created_at`;
+
+const FIND_HOLD_WINDOW = `
+  SELECT vehicle_class_id, pickup_at, hold_until
+  FROM bookings
+  WHERE id = $1`;
+
+const PROMOTE_BOOKING = `
+  UPDATE bookings
+  SET status = 'new'
+  WHERE id = $1 AND status = 'waitlisted'`;
 
 const FIND_BOOKING = `${SELECT_BOOKINGS}
   WHERE b.id = $1`;
@@ -251,6 +283,7 @@ function toBooking(row: BookingRow): Booking {
     direction: row.direction,
     airport: { code: row.airport_code, name: row.airport_name },
     regionName: row.region_name,
+    vehicleClassName: row.vehicle_class_name,
     address: row.address,
     pickupAt: row.pickup_at,
     holdUntil: row.hold_until,
@@ -360,6 +393,7 @@ export class BookingsRepository {
       dto.timesUsed ?? null,
       dto.additionalRequests ?? null,
       dto.petInfo ?? null,
+      booking.status,
     ]);
     return rows[0].id;
   }
@@ -372,6 +406,32 @@ export class BookingsRepository {
   async findById(id: string): Promise<Booking | null> {
     const { rows } = await this.db.query<BookingRow>(FIND_BOOKING, [id]);
     return rows[0] ? toBooking(rows[0]) : null;
+  }
+
+  async listSchedule(from: Date, until: Date): Promise<Booking[]> {
+    const { rows } = await this.db.query<BookingRow>(LIST_SCHEDULE, [from, until]);
+    return rows.map(toBooking);
+  }
+
+  async listWaitlist(): Promise<Booking[]> {
+    const { rows } = await this.db.query<BookingRow>(LIST_WAITLIST);
+    return rows.map(toBooking);
+  }
+
+  /** The class and time window a booking needs a vehicle for. */
+  async findHoldWindow(id: string): Promise<{ vehicleClassId: string; pickupAt: Date; holdUntil: Date } | null> {
+    const { rows } = await this.db.query<{ vehicle_class_id: string; pickup_at: Date; hold_until: Date }>(
+      FIND_HOLD_WINDOW,
+      [id],
+    );
+    const row = rows[0];
+    return row ? { vehicleClassId: row.vehicle_class_id, pickupAt: row.pickup_at, holdUntil: row.hold_until } : null;
+  }
+
+  /** waitlisted → new. False when the booking is no longer waitlisted. */
+  async promote(q: Queryable, id: string): Promise<boolean> {
+    const { rowCount } = await q.query(PROMOTE_BOOKING, [id]);
+    return rowCount === 1;
   }
 
   /** Vehicles and drivers that are free for this booking's time. */

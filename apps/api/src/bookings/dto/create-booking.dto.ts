@@ -96,4 +96,12 @@ export class CreateBookingDto extends CreateQuoteDto {
   @IsString()
   @MaxLength(1000)
   petInfo?: string | null;
+
+  /**
+   * What to do when no vehicle is free at that time: false (default) refuses the booking so the
+   * customer can change it; true saves it on the waiting list, holding nothing.
+   */
+  @IsOptional()
+  @IsBoolean()
+  joinWaitlist?: boolean;
 }
