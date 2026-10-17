@@ -3,7 +3,8 @@ import type { QuoteLine, QuoteRequest } from "./reservation";
 
 // Mirrors apps/api/src/bookings: POST /v1/bookings (public) and /v1/admin/bookings (staff).
 
-export type BookingStatus = "new" | "confirmed" | "cancelled";
+/** new: holds a car, awaiting staff. confirmed: vehicle and driver assigned. waitlisted: no car was free. */
+export type BookingStatus = "new" | "confirmed" | "waitlisted" | "cancelled";
 export type TripDirection = "from_airport" | "to_airport";
 
 /** What the reservation form submits: the priced trip plus who is travelling. */
@@ -26,6 +27,8 @@ export interface BookingRequest extends QuoteRequest {
   timesUsed: string | null;
   additionalRequests: string | null;
   petInfo: string | null;
+  /** When no car is free: true saves the request on the waiting list instead of refusing it. */
+  joinWaitlist?: boolean;
 }
 
 /** What the customer gets back after "Confirm reservation". */
@@ -48,7 +51,12 @@ export interface AdminBooking {
   direction: TripDirection;
   airport: { code: string; name: string };
   regionName: string;
+  /** The fleet type the booking needs, e.g. "Grand Cabin". */
+  vehicleClassName: string;
   address: string;
+  /** Start and end of the time the vehicle is needed (ISO timestamps). */
+  pickupAt: string;
+  holdUntil: string;
   /** Tokyo local date ("2026-10-16") and time ("14:30") of the pickup. */
   pickupDate: string;
   pickupTime: string;
@@ -107,6 +115,18 @@ export interface Confirmation {
 
 export const confirmBooking = (id: string, confirmation: Confirmation) =>
   apiRequest<AdminBooking>(`/admin/bookings/${id}/confirm`, { method: "POST", body: confirmation });
+
+/** New requests and confirmed trips that occupy a vehicle during `days` Tokyo days from `date` ("2026-10-16"). */
+export const getSchedule = (date: string, days = 1) =>
+  apiRequest<AdminBooking[]>(`/admin/bookings/schedule?date=${date}&days=${days}`);
+
+/** The waiting list in joining order. `slotFree`: a vehicle of its type is free for its time right now. */
+export type WaitlistedBooking = AdminBooking & { slotFree: boolean };
+export const listWaitlist = () => apiRequest<WaitlistedBooking[]>("/admin/bookings/waitlist");
+
+/** Moves a waitlisted booking into the queue as a New Request, which holds a vehicle for it. */
+export const promoteBooking = (id: string) =>
+  apiRequest<AdminBooking>(`/admin/bookings/${id}/promote`, { method: "POST", body: {} });
 
 export const cancelBooking = (id: string) =>
   apiRequest<AdminBooking>(`/admin/bookings/${id}/cancel`, { method: "POST", body: {} });
