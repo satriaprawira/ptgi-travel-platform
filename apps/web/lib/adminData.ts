@@ -4,7 +4,7 @@ export type BadgeVariant = "indigo" | "accent" | "success" | "muted";
 // components/admin/BookingsQueue.tsx, AvailabilityCalendar.tsx.
 
 // Live data now, see lib/api/ and components/admin/: drivers and vehicles (fleet.ts),
-// route pricing (fares.ts) and surcharges (surcharges.ts).
+// route pricing (fares.ts), surcharges (surcharges.ts) and users (users.ts).
 
 export interface HighSeasonRow {
   period: string;
@@ -50,23 +50,7 @@ export const notificationTemplates: NotificationTemplate[] = [
   },
 ];
 
-export interface AdminUser {
-  name: string;
-  email: string;
-  role: string;
-  roleVariant: BadgeVariant;
-  status: string;
-  lastLogin: string;
-}
-
-export const adminUsers: AdminUser[] = [
-  { name: "Wildaan Pratama", email: "wildaan@goalintl.co", role: "Admin", roleVariant: "indigo", status: "Active", lastLogin: "Today, 08:12" },
-  { name: "Kresna Adjie", email: "kresna@goalintl.co", role: "Admin", roleVariant: "indigo", status: "Active", lastLogin: "Yesterday, 19:40" },
-  { name: "Ayu Lestari", email: "ayu@goalintl.co", role: "Staff", roleVariant: "muted", status: "Active", lastLogin: "Today, 07:55" },
-  { name: "Hiroshi Sato", email: "hiroshi.s@goalintl.co", role: "Driver", roleVariant: "muted", status: "Active", lastLogin: "Today, 06:30" },
-];
-
-export type ModalKind = "highseason" | "template" | "user";
+export type ModalKind = "highseason" | "template";
 
 export type ModalField =
   | { type: "text" | "date"; label: string; placeholder?: string }
@@ -96,14 +80,6 @@ export const modalForms: Record<ModalKind, ModalFormConfig> = {
       { type: "text", label: "Template name", placeholder: "e.g. Trip Reminder" },
       { type: "select", label: "Channel", options: ["Email", "WhatsApp", "Email + WhatsApp"] },
       { type: "textarea", label: "Message", placeholder: "Hi {{passenger_name}}, ..." },
-    ],
-  },
-  user: {
-    title: "Add User",
-    rows: [
-      { type: "text", label: "Full name", placeholder: "e.g. Dewi Anggraini" },
-      { type: "text", label: "Email", placeholder: "name@goalintl.co" },
-      { type: "select", label: "Role", options: ["Staff", "Admin", "Driver"] },
     ],
   },
 };

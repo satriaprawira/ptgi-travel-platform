@@ -6,20 +6,17 @@ import styles from "./AdminDashboard.module.css";
 import { getSession, logout, type Session } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { SESSION_EXPIRED_EVENT } from "@/lib/api/token";
+import ChangePasswordForm from "./ChangePasswordForm";
 import AvailabilityCalendar from "./admin/AvailabilityCalendar";
 import BookingsQueue from "./admin/BookingsQueue";
+import ChangePasswordModal from "./admin/ChangePasswordModal";
 import DriverManagement from "./admin/DriverManagement";
 import RoutePricing from "./admin/RoutePricing";
 import SurchargeEditor from "./admin/SurchargeEditor";
+import UserManagement from "./admin/UserManagement";
 import VehicleManagement from "./admin/VehicleManagement";
 import { PanelHead, badgeClass } from "./admin/ui";
-import {
-  adminUsers,
-  highSeasonRows,
-  modalForms,
-  notificationTemplates,
-  type ModalKind,
-} from "@/lib/adminData";
+import { highSeasonRows, modalForms, notificationTemplates, type ModalKind } from "@/lib/adminData";
 
 type PanelId =
   | "bookings"
@@ -221,12 +218,24 @@ const PANEL_META: Record<PanelId, { title: string; description: string; action?:
   },
   users: {
     title: "User Management",
-    description: "Internal accounts – admins, travel agent staff, and drivers.",
-    action: { label: "+ Add User", kind: "user" },
+    description: "Who can sign in to this admin, and whether they are an admin or staff.",
   },
 };
 
-const LIVE_PANELS: ReadonlySet<PanelId> = new Set(["bookings", "availability", "drivers", "vehicles", "routes", "surcharge"]);
+const LIVE_PANELS: ReadonlySet<PanelId> = new Set([
+  "bookings",
+  "availability",
+  "drivers",
+  "vehicles",
+  "routes",
+  "surcharge",
+  "users",
+]);
+
+// Hidden from staff (the API refuses them too).
+const ADMIN_ONLY_PANELS: ReadonlySet<PanelId> = new Set(["users"]);
+
+const ROLE_LABEL = { admin: "Admin", staff: "Staff" } as const;
 
 const LOGIN_URL = "/login?next=/admin";
 
@@ -240,6 +249,7 @@ export default function AdminDashboard() {
   const [modalKind, setModalKind] = useState<ModalKind | null>(null);
   const [editingTemplates, setEditingTemplates] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
   const templateRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -318,6 +328,16 @@ export default function AdminDashboard() {
     );
   }
 
+  // A temporary password (new account or reset) must be replaced before anything else.
+  if (session.mustChangePassword && !session.authDisabled) {
+    return <ChangePasswordForm session={session} onChanged={setSession} onSignOut={signOut} />;
+  }
+
+  const isAdmin = session.role === "admin";
+  const navGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isAdmin || !ADMIN_ONLY_PANELS.has(item.id)),
+  }));
   const meta = PANEL_META[activePanel];
   const modalConfig = modalKind ? modalForms[modalKind] : null;
 
@@ -336,7 +356,12 @@ export default function AdminDashboard() {
             <span className={styles.userEmail}>Local development · no sign-in</span>
           ) : (
             <>
-              <span className={styles.userEmail}>{session.email}</span>
+              <span className={styles.userEmail}>
+                {session.fullName} <span className={styles.userRole}>· {ROLE_LABEL[session.role]}</span>
+              </span>
+              <button className={`${styles.signOut} ${styles.wideOnly}`} onClick={() => setChangingPassword(true)}>
+                Change password
+              </button>
               <button className={styles.signOut} onClick={signOut}>
                 Sign out
               </button>
@@ -356,7 +381,7 @@ export default function AdminDashboard() {
 
       <div className={styles.shellBody}>
         <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
-          {NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.label}>
               <div className={styles.navGroupLabel}>{group.label}</div>
               {group.items.map((item) => (
@@ -371,6 +396,23 @@ export default function AdminDashboard() {
               ))}
             </div>
           ))}
+          {!session.authDisabled && (
+            // Phones: the header has no room for this, so it lives in the menu.
+            <div className={styles.narrowOnly}>
+              <div className={styles.navGroupLabel}>
+                {session.fullName} · {ROLE_LABEL[session.role]}
+              </div>
+              <button
+                className={styles.navItem}
+                onClick={() => {
+                  setSidebarOpen(false);
+                  setChangingPassword(true);
+                }}
+              >
+                Change password
+              </button>
+            </div>
+          )}
         </aside>
 
         <main className={styles.content}>
@@ -406,11 +448,11 @@ export default function AdminDashboard() {
             )}
 
             {activePanel === "routes" && (
-              <RoutePricing title={meta.title} description={meta.description} showToast={showToast} />
+              <RoutePricing title={meta.title} description={meta.description} showToast={showToast} canEdit={isAdmin} />
             )}
 
             {activePanel === "surcharge" && (
-              <SurchargeEditor title={meta.title} description={meta.description} showToast={showToast} />
+              <SurchargeEditor title={meta.title} description={meta.description} showToast={showToast} canEdit={isAdmin} />
             )}
 
             {activePanel === "highseason" && (
@@ -484,43 +526,13 @@ export default function AdminDashboard() {
               </>
             )}
 
-            {activePanel === "users" && (
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Last login</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adminUsers.map((user) => (
-                      <tr key={user.email}>
-                        <td>{user.name}</td>
-                        <td className={styles.mono}>{user.email}</td>
-                        <td>
-                          <span className={badgeClass(user.roleVariant)}>{user.role}</span>
-                        </td>
-                        <td>
-                          <span className={badgeClass("success")}>{user.status}</span>
-                        </td>
-                        <td>{user.lastLogin}</td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button className={styles.iconBtn} onClick={() => setModalKind("user")}>
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {activePanel === "users" && isAdmin && (
+              <UserManagement
+                title={meta.title}
+                description={meta.description}
+                showToast={showToast}
+                currentUserId={session.id}
+              />
             )}
           </section>
         </main>
@@ -572,6 +584,17 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      <ChangePasswordModal
+        open={changingPassword}
+        email={session.email}
+        onClose={() => setChangingPassword(false)}
+        onChanged={(next) => {
+          setSession(next);
+          setChangingPassword(false);
+          showToast("Password changed. Other devices are signed out.");
+        }}
+      />
 
       <div className={`${styles.toast} ${toast ? styles.toastShow : ""}`}>{toast}</div>
     </div>

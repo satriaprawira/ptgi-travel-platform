@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import LoginForm from "@/components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Sign in – Goal International",
-  description: "Log in or create an account to manage your airport pickup reservations.",
+  title: "Staff sign-in – Goal International",
+  description: "Sign-in for Goal International staff: bookings, fleet and pricing.",
 };
 
 export default function LoginPage() {

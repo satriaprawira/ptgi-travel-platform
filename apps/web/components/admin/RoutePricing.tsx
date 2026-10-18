@@ -35,9 +35,11 @@ interface Props {
   title: string;
   description: string;
   showToast: (message: string) => void;
+  /** Admins edit; staff see the prices only (the API refuses their edits too). */
+  canEdit: boolean;
 }
 
-export default function RoutePricing({ title, description, showToast }: Props) {
+export default function RoutePricing({ title, description, showToast, canEdit }: Props) {
   const [fares, setFares] = useState<AdminFare[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -138,6 +140,10 @@ export default function RoutePricing({ title, description, showToast }: Props) {
     <>
       <PanelHead title={title} description={description} />
 
+      {!canEdit && (
+        <p className={styles.viewOnly}>View only: ask an admin to change prices.</p>
+      )}
+
       {loadError && (
         <div className={styles.alert} role="alert">
           <span>Couldn&apos;t load route prices: {loadError}</span>
@@ -197,14 +203,16 @@ export default function RoutePricing({ title, description, showToast }: Props) {
                     </span>
                   </td>
                   <td>
-                    <div className={styles.rowActions}>
-                      <button className={styles.iconBtn} onClick={() => openEdit(fare)}>
-                        Edit
-                      </button>
-                      <button className={styles.iconBtn} onClick={() => void toggleActive(fare)}>
-                        {fare.isActive ? "Hide" : "Show"}
-                      </button>
-                    </div>
+                    {canEdit && (
+                      <div className={styles.rowActions}>
+                        <button className={styles.iconBtn} onClick={() => openEdit(fare)}>
+                          Edit
+                        </button>
+                        <button className={styles.iconBtn} onClick={() => void toggleActive(fare)}>
+                          {fare.isActive ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))

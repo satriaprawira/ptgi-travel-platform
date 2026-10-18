@@ -139,9 +139,11 @@ interface Props {
   title: string;
   description: string;
   showToast: (message: string) => void;
+  /** Admins edit; staff see the prices only (the API refuses their edits too). */
+  canEdit: boolean;
 }
 
-export default function SurchargeEditor({ title, description, showToast }: Props) {
+export default function SurchargeEditor({ title, description, showToast, canEdit }: Props) {
   const [data, setData] = useState<Surcharges | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -208,20 +210,26 @@ export default function SurchargeEditor({ title, description, showToast }: Props
     }
   };
 
-  const editButton = (next: Editing) => (
-    <button className={styles.iconBtn} onClick={() => openEdit(next)}>
-      Edit
-    </button>
-  );
-  const toggleButton = (kind: SurchargeKind, row: { id: string; label: string; isActive: boolean }) => (
-    <button className={styles.iconBtn} onClick={() => void toggle(kind, row)}>
-      {row.isActive ? "Turn off" : "Turn on"}
-    </button>
-  );
+  const editButton = (next: Editing) =>
+    canEdit && (
+      <button className={styles.iconBtn} onClick={() => openEdit(next)}>
+        Edit
+      </button>
+    );
+  const toggleButton = (kind: SurchargeKind, row: { id: string; label: string; isActive: boolean }) =>
+    canEdit && (
+      <button className={styles.iconBtn} onClick={() => void toggle(kind, row)}>
+        {row.isActive ? "Turn off" : "Turn on"}
+      </button>
+    );
 
   return (
     <>
       <PanelHead title={title} description={description} />
+
+      {!canEdit && (
+        <p className={styles.viewOnly}>View only: ask an admin to change prices.</p>
+      )}
 
       {loadError && (
         <div className={styles.alert} role="alert">
