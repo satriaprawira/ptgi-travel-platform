@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./LoginForm.module.css";
 import { login } from "@/lib/api/auth";
 
@@ -11,17 +11,13 @@ function nextPath(): string {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
 }
 
+/** Staff sign-in. Accounts are created by an admin in User Management; customers don't sign in. */
 export default function LoginForm() {
   const router = useRouter();
-  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("expired") === "1") {
@@ -29,22 +25,12 @@ export default function LoginForm() {
     }
   }, []);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2400);
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (isSignup) {
-      // No customer accounts yet: only the demo staff sign-in is live.
-      showToast("Account created – mockup only");
-      return;
-    }
     setSubmitting(true);
     setError(null);
     try {
+      // With a temporary password, the admin asks for a new one before showing anything else.
       await login(email, password);
       router.replace(nextPath());
     } catch (err) {
@@ -56,16 +42,11 @@ export default function LoginForm() {
   return (
     <div className={styles.authPage}>
       <div className={styles.brandPanel}>
-        <div className={styles.brand}>
-          Goal International Co., Ltd
-        </div>
+        <div className={styles.brand}>Goal International Co., Ltd</div>
 
         <div>
-          <h1>Sign in to manage your pickup</h1>
-          <p>
-            Access your reservations, track your driver, and book your next airport transfer
-            across Tokyo.
-          </p>
+          <h1>Staff sign-in</h1>
+          <p>Bookings, fleet, drivers and pricing for our Tokyo airport transfers, in one place.</p>
 
           <div className={styles.miniTicket}>
             <div className={styles.mtBrand}>NRT–HND · E-Ticket</div>
@@ -90,54 +71,13 @@ export default function LoginForm() {
 
       <div className={styles.formPanel}>
         <div className={styles.authCard}>
-          <h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
-          <p className={styles.authSub}>
-            {isSignup
-              ? "Sign up to start booking your airport pickups"
-              : "Log in to continue to your account"}
-          </p>
-
-          <button
-            type="button"
-            className={styles.googleBtn}
-            onClick={() => showToast("Google sign-in – mockup only")}
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
-              />
-              <path
-                fill="#34A853"
-                d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"
-              />
-              <path
-                fill="#EA4335"
-                d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.581C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"
-              />
-            </svg>
-            Continue with Google
-          </button>
-
-          <div className={styles.divider}>
-            <span>or</span>
-          </div>
+          <h2>Welcome back</h2>
+          <p className={styles.authSub}>Sign in with the account an admin created for you.</p>
 
           <form onSubmit={(event) => void handleSubmit(event)}>
-            {error && !isSignup && (
+            {error && (
               <div className={styles.formError} role="alert">
                 {error}
-              </div>
-            )}
-
-            {isSignup && (
-              <div className={styles.field}>
-                <label htmlFor="fullName">Full name</label>
-                <input type="text" id="fullName" placeholder="Your full name" />
               </div>
             )}
 
@@ -160,82 +100,21 @@ export default function LoginForm() {
                 type="password"
                 id="password"
                 placeholder="••••••••"
-                autoComplete={isSignup ? "new-password" : "current-password"}
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
-            {isSignup && (
-              <div className={styles.field}>
-                <label htmlFor="confirmPassword">Confirm password</label>
-                <input type="password" id="confirmPassword" placeholder="••••••••" />
-              </div>
-            )}
-
-            {!isSignup && (
-              <div className={styles.rowBetween}>
-                <label className={styles.remember}>
-                  <input type="checkbox" /> Remember me
-                </label>
-                <a
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    showToast("Password reset – mockup only");
-                  }}
-                >
-                  Forgot password?
-                </a>
-              </div>
-            )}
-
             <button type="submit" className={styles.btnPrimary} disabled={submitting}>
-              {isSignup ? "Create account" : submitting ? "Signing in…" : "Log in"}
+              {submitting ? "Signing in…" : "Sign in"}
             </button>
-
-            {isSignup && (
-              <p className={styles.terms}>
-                By creating an account, you agree to our <a href="#">Terms</a> and{" "}
-                <a href="#">Privacy Policy</a>.
-              </p>
-            )}
           </form>
 
-          <p className={styles.switchLine}>
-            {isSignup ? (
-              <>
-                Already have an account?{" "}
-                <a
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setIsSignup(false);
-                  }}
-                >
-                  Log in
-                </a>
-              </>
-            ) : (
-              <>
-                Not a member?{" "}
-                <a
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setIsSignup(true);
-                  }}
-                >
-                  Sign Up
-                </a>
-              </>
-            )}
-          </p>
+          <p className={styles.helpLine}>Forgot your password? Ask an admin to reset it.</p>
         </div>
       </div>
-
-      <div className={`${styles.toast} ${toast ? styles.show : ""}`}>{toast}</div>
     </div>
   );
 }

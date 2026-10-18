@@ -580,13 +580,43 @@
   font-size: 12px;
   color: var(--ink-faint);
 }
+.viewOnly {
+  margin: -6px 0 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
 .fieldHint {
   margin: -8px 0 14px;
   font-size: 12px;
   color: var(--ink-faint);
 }
 
-/* ---------- Demo sign-in: session check + signed-in user ---------- */
+/* ---------- User Management: one-time temporary password ---------- */
+.tempPasswordIntro {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.tempPassword {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.tempPassword code {
+  flex: 1;
+  font-family: var(--font-mono), monospace;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--indigo-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  user-select: all;
+}
+
+/* ---------- Sign-in: session check + signed-in user ---------- */
 .sessionCheck {
   min-height: 100vh;
   display: flex;
@@ -607,6 +637,9 @@
 .userEmail {
   color: rgba(255, 255, 255, 0.72);
 }
+.userRole {
+  color: rgba(255, 255, 255, 0.5);
+}
 .signOut {
   background: none;
   border: 1.5px solid rgba(255, 255, 255, 0.28);
@@ -618,9 +651,16 @@
 .signOut:hover {
   border-color: #fff;
 }
+.narrowOnly {
+  display: none;
+}
 @media (max-width: 640px) {
-  .userEmail {
+  .userEmail,
+  .wideOnly {
     display: none;
+  }
+  .narrowOnly {
+    display: block;
   }
 }
 

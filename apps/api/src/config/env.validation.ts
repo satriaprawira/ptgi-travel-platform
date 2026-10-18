@@ -1,7 +1,6 @@
 import { plainToInstance, Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
@@ -47,19 +46,10 @@ export class EnvironmentVariables {
   @IsBoolean()
   AUTH_DISABLED: boolean = false;
 
-  // Demo admin login (until a real auth provider replaces it): one account, set here, never in the
-  // web app. All three or none; without them, admin routes stay locked outside development.
-  @Transform(emptyToUndefined)
-  @IsOptional()
-  @IsEmail({}, { message: 'DEMO_ADMIN_EMAIL must be an email address' })
-  DEMO_ADMIN_EMAIL?: string;
-
-  @Transform(emptyToUndefined)
-  @IsOptional()
-  @IsString()
-  DEMO_ADMIN_PASSWORD?: string;
-
-  /** Signs the login tokens. Long and random: `openssl rand -base64 48`. */
+  /**
+   * Signs the staff sign-in tokens. Long and random: `openssl rand -base64 48`. Without it, admin routes
+   * stay locked (unless AUTH_DISABLED in local development). Changing it signs everyone out.
+   */
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsString()
@@ -80,18 +70,6 @@ export function validate(config: Record<string, unknown>): EnvironmentVariables 
   if (env.AUTH_DISABLED && env.NODE_ENV !== NodeEnv.Development) {
     throw new Error(
       `Invalid environment configuration:\n  - AUTH_DISABLED=true is only allowed when NODE_ENV=development (NODE_ENV is "${env.NODE_ENV}")`,
-    );
-  }
-
-  const demoVars = [env.DEMO_ADMIN_EMAIL, env.DEMO_ADMIN_PASSWORD, env.AUTH_TOKEN_SECRET];
-  if (demoVars.some(Boolean) && !demoVars.every(Boolean)) {
-    throw new Error(
-      'Invalid environment configuration:\n  - DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD and AUTH_TOKEN_SECRET must be set together',
-    );
-  }
-  if (env.NODE_ENV === NodeEnv.Production && env.DEMO_ADMIN_PASSWORD && env.DEMO_ADMIN_PASSWORD.length < 16) {
-    throw new Error(
-      'Invalid environment configuration:\n  - DEMO_ADMIN_PASSWORD must be at least 16 characters in production',
     );
   }
 

@@ -1,59 +1,45 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  ServiceUnavailableException,
-  UnauthorizedException,
-  UseGuards,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { AllowPasswordChange } from '../common/decorators/roles.decorator.js';
 import { AdminAuthGuard, type AuthenticatedRequest } from '../common/guards/admin-auth.guard.js';
-import type { EnvironmentVariables } from '../config/env.validation.js';
+import { AuthService, toSessionUser, type SessionUser } from './auth.service.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { safeEqual, signToken, TOKEN_TTL_SECONDS } from './token.js';
 
-/**
- * Demo login: one admin account from DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD, so the client can try the
- * admin on the live site before a real auth provider (Auth.js or Clerk) is chosen. No user table.
- */
+/** Staff sign-in (accounts in the users table, managed in User Management). Customers don't sign in. */
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly config: ConfigService<EnvironmentVariables, true>) {}
+  constructor(private readonly auth: AuthService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto) {
-    const email = this.config.get('DEMO_ADMIN_EMAIL', { infer: true })?.toLowerCase();
-    const password = this.config.get('DEMO_ADMIN_PASSWORD', { infer: true });
-    const secret = this.config.get('AUTH_TOKEN_SECRET', { infer: true });
-    // Env validation guarantees all three or none.
-    if (!email || !password || !secret) {
-      throw new ServiceUnavailableException('Sign-in is not configured on this server');
-    }
-
-    // Both comparisons always run, so the response time doesn't reveal which one failed.
-    const emailOk = safeEqual(dto.email.toLowerCase(), email);
-    const passwordOk = safeEqual(dto.password, password);
-    if (!emailOk || !passwordOk) throw new UnauthorizedException('Incorrect email or password');
-
-    const now = new Date();
-    return {
-      accessToken: signToken(email, 'admin', secret, now),
-      expiresAt: new Date(now.getTime() + TOKEN_TTL_SECONDS * 1000).toISOString(),
-      user: { email, role: 'admin' as const },
-    };
+  login(@Body() dto: LoginDto, @Req() request: Request) {
+    return this.auth.login(dto, request.ip ?? 'unknown');
   }
 
-  /** Who is signed in. With AUTH_DISABLED (local development only) there is no token to read. */
+  /** Who is signed in. With AUTH_DISABLED (local development only) nobody is, and everything is allowed. */
   @Get('me')
   @UseGuards(AdminAuthGuard)
-  me(@Req() request: AuthenticatedRequest) {
+  @AllowPasswordChange()
+  me(@Req() request: AuthenticatedRequest): SessionUser {
     return request.user
-      ? { email: request.user.sub, role: request.user.role, authDisabled: false }
-      : { email: 'local development', role: 'admin' as const, authDisabled: true };
+      ? toSessionUser(request.user)
+      : {
+          id: null,
+          fullName: 'Local development',
+          email: 'local development',
+          role: 'admin',
+          mustChangePassword: false,
+          authDisabled: true,
+        };
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminAuthGuard)
+  @AllowPasswordChange()
+  changePassword(@Req() request: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
+    if (!request.user) throw new BadRequestException('Sign-in is turned off in local development: no password to change');
+    return this.auth.changePassword(request.user, dto);
   }
 }
