@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
 import { ReservationOptionsModule } from './reservation-options/reservation-options.module.js';
 import { SurchargesModule } from './surcharges/surcharges.module.js';
+import { UsersModule } from './users/users.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
 
 @Module({
@@ -22,6 +23,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     PricingModule,
     BookingsModule, // POST /v1/bookings is public; /v1/admin/bookings is staff-only
     // Admin
+    UsersModule, // global: AdminAuthGuard reads the signed-in user through it
     AuthModule,
     VehiclesModule,
     DriversModule,

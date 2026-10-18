@@ -1,16 +1,18 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 /**
- * Demo login tokens: standard HS256 JWTs signed with AUTH_TOKEN_SECRET, so a real auth provider's
- * JWTs (with the same `role` claim) can replace them without changing AdminAuthGuard's contract.
- * Pure functions, no framework: tested in token.spec.ts.
+ * Sign-in tokens: standard HS256 JWTs signed with AUTH_TOKEN_SECRET. A token only proves who signed
+ * in; what they may do is read from the database on every request (AdminAuthGuard), so disabling an
+ * account or changing a role applies at once. Pure functions, no framework: tested in token.spec.ts.
  */
 
-export type Role = 'admin';
+export type Role = 'admin' | 'staff';
+export const ROLES: readonly Role[] = ['admin', 'staff'];
 
 export interface TokenPayload {
-  sub: string; // the signed-in email
-  role: Role;
+  sub: string; // users.id
+  role: Role; // at sign-in; informational, the guard uses the current role
+  ver: number; // users.token_version at sign-in; a later increase ends this session
   iat: number; // seconds since epoch
   exp: number;
 }
@@ -22,9 +24,13 @@ const HEADER = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
 
 const signature = (unsigned: string, secret: string) => createHmac('sha256', secret).update(unsigned).digest();
 
-export function signToken(sub: string, role: Role, secret: string, now: Date = new Date()): string {
+export function signToken(
+  user: { id: string; role: Role; tokenVersion: number },
+  secret: string,
+  now: Date = new Date(),
+): string {
   const iat = Math.floor(now.getTime() / 1000);
-  const payload: TokenPayload = { sub, role, iat, exp: iat + TOKEN_TTL_SECONDS };
+  const payload: TokenPayload = { sub: user.id, role: user.role, ver: user.tokenVersion, iat, exp: iat + TOKEN_TTL_SECONDS };
   const unsigned = `${HEADER}.${base64url(JSON.stringify(payload))}`;
   return `${unsigned}.${base64url(signature(unsigned, secret))}`;
 }
@@ -48,13 +54,14 @@ export function verifyToken(token: string, secret: string, now: Date = new Date(
   } catch {
     return null;
   }
-  if (typeof claims.sub !== 'string' || claims.role !== 'admin' || typeof claims.exp !== 'number') return null;
+  if (
+    typeof claims.sub !== 'string' ||
+    !ROLES.includes(claims.role as Role) ||
+    !Number.isInteger(claims.ver) ||
+    typeof claims.exp !== 'number'
+  ) {
+    return null;
+  }
   if (claims.exp <= Math.floor(now.getTime() / 1000)) return null;
   return claims as TokenPayload;
-}
-
-/** Compares two secrets without leaking, through timing, how much of them matched. */
-export function safeEqual(a: string, b: string): boolean {
-  const hash = (value: string) => createHash('sha256').update(value).digest();
-  return timingSafeEqual(hash(a), hash(b));
 }
