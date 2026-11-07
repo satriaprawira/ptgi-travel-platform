@@ -64,7 +64,7 @@ export interface Surcharges {
 }
 
 const LIST_VEHICLE_SURCHARGES = `
-  SELECT id, label, surcharge_jpy FROM vehicle_types ORDER BY sort_order, label`;
+  SELECT id, label, surcharge_jpy FROM vehicle_types WHERE is_active ORDER BY sort_order, label`;
 
 const SELECT_TIME_SURCHARGES = `
   SELECT id, label, to_char(starts_at, 'HH24:MI') AS starts_at, to_char(ends_at, 'HH24:MI') AS ends_at,
