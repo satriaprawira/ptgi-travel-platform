@@ -30,6 +30,7 @@ interface BookingRow {
   pickup_date: string;
   pickup_time: string;
   flight_code: string | null;
+  terminal: string | null;
   vehicle_label: string;
   payment_label: string;
   price_lines: QuoteLine[];
@@ -43,6 +44,7 @@ interface BookingRow {
   country_origin: string;
   passengers: string;
   luggage: string;
+  oversized_luggage: string | null;
   age_adults: boolean;
   age_infants: boolean;
   age_children: boolean;
@@ -52,6 +54,8 @@ interface BookingRow {
   times_used: string | null;
   additional_requests: string | null;
   pet_info: string | null;
+  terms_version: string | null;
+  terms_accepted_at: Date | null;
   confirmed_at: Date | null;
   cancelled_at: Date | null;
   created_at: Date;
@@ -79,6 +83,7 @@ export interface Booking {
   pickupDate: string;
   pickupTime: string;
   flightCode: string | null;
+  terminal: string | null;
   vehicleLabel: string;
   paymentLabel: string;
   priceLines: QuoteLine[];
@@ -97,6 +102,7 @@ export interface Booking {
   countryOrigin: string;
   passengers: string;
   luggage: string;
+  oversizedLuggage: string | null;
   ageAdults: boolean;
   ageInfants: boolean;
   ageChildren: boolean;
@@ -106,6 +112,9 @@ export interface Booking {
   timesUsed: string | null;
   additionalRequests: string | null;
   petInfo: string | null;
+  /** Null for bookings made before the Terms & Conditions checkbox existed. */
+  termsVersion: string | null;
+  termsAcceptedAt: Date | null;
   confirmedAt: Date | null;
   cancelledAt: Date | null;
   createdAt: Date;
@@ -174,7 +183,8 @@ const INSERT_BOOKING = `
     price_lines, add_ons, total_jpy, quote_required,
     salutation, passenger_name, booker_name, country_origin, passengers, luggage,
     age_adults, age_infants, age_children, email, phone_country_code, phone,
-    times_used, additional_requests, pet_info, status
+    times_used, additional_requests, pet_info, status,
+    terminal, oversized_luggage, terms_version, terms_accepted_at
   ) VALUES (
     'GI-' || to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYMM') || '-'
           || lpad(nextval('booking_reference_seq')::text, 4, '0'),
@@ -183,7 +193,8 @@ const INSERT_BOOKING = `
     $11::jsonb, $12::jsonb, $13, $14,
     $15, $16, $17, $18, $19, $20,
     $21, $22, $23, $24, $25, $26,
-    $27, $28, $29, $30::booking_status
+    $27, $28, $29, $30::booking_status,
+    $31, $32, $33, now()
   )
   RETURNING id`;
 
@@ -194,11 +205,11 @@ const SELECT_BOOKINGS = `
          b.address, b.pickup_at, b.hold_until,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD') AS pickup_date,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'HH24:MI') AS pickup_time,
-         b.flight_code, b.vehicle_label, b.payment_label, b.price_lines, b.add_ons,
+         b.flight_code, b.terminal, b.vehicle_label, b.payment_label, b.price_lines, b.add_ons,
          b.total_jpy, b.quote_required, b.final_total_jpy,
          b.salutation, b.passenger_name, b.booker_name, b.country_origin, b.passengers, b.luggage,
-         b.age_adults, b.age_infants, b.age_children, b.email, b.phone_country_code, b.phone,
-         b.times_used, b.additional_requests, b.pet_info,
+         b.oversized_luggage, b.age_adults, b.age_infants, b.age_children, b.email, b.phone_country_code, b.phone,
+         b.times_used, b.additional_requests, b.pet_info, b.terms_version, b.terms_accepted_at,
          b.confirmed_at, b.cancelled_at, b.created_at,
          v.id AS vehicle_id, v.model AS vehicle_model, v.plate_number AS vehicle_plate_number,
          d.id AS driver_id, d.full_name AS driver_full_name, d.phone AS driver_phone
@@ -290,6 +301,7 @@ function toBooking(row: BookingRow): Booking {
     pickupDate: row.pickup_date,
     pickupTime: row.pickup_time,
     flightCode: row.flight_code,
+    terminal: row.terminal,
     vehicleLabel: row.vehicle_label,
     paymentLabel: row.payment_label,
     priceLines: row.price_lines,
@@ -311,6 +323,7 @@ function toBooking(row: BookingRow): Booking {
     countryOrigin: row.country_origin,
     passengers: row.passengers,
     luggage: row.luggage,
+    oversizedLuggage: row.oversized_luggage,
     ageAdults: row.age_adults,
     ageInfants: row.age_infants,
     ageChildren: row.age_children,
@@ -320,6 +333,8 @@ function toBooking(row: BookingRow): Booking {
     timesUsed: row.times_used,
     additionalRequests: row.additional_requests,
     petInfo: row.pet_info,
+    termsVersion: row.terms_version,
+    termsAcceptedAt: row.terms_accepted_at,
     confirmedAt: row.confirmed_at,
     cancelledAt: row.cancelled_at,
     createdAt: row.created_at,
@@ -394,6 +409,9 @@ export class BookingsRepository {
       dto.additionalRequests ?? null,
       dto.petInfo ?? null,
       booking.status,
+      dto.terminal ?? null,
+      dto.oversizedLuggage ?? null,
+      dto.termsVersion,
     ]);
     return rows[0].id;
   }

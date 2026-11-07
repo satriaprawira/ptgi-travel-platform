@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { trim, trimToNull } from '../../common/transforms.js';
 import { CreateQuoteDto } from '../../pricing/dto/create-quote.dto.js';
 
@@ -23,6 +23,13 @@ export class CreateBookingDto extends CreateQuoteDto {
   @IsString()
   @MaxLength(20)
   flightCode?: string | null;
+
+  /** Arrival terminal (from the airport) or departure terminal (to the airport), e.g. "Terminal 3". */
+  @IsOptional()
+  @Transform(trimToNull)
+  @IsString()
+  @MaxLength(40)
+  terminal?: string | null;
 
   @IsIn(['Mr.', 'Mrs.', 'Ms.'])
   salutation: string;
@@ -57,6 +64,13 @@ export class CreateBookingDto extends CreateQuoteDto {
   @IsNotEmpty()
   @MaxLength(120)
   luggage: string;
+
+  /** Items that aren't standard suitcases (golf bags, surfboards, boxes…), so staff can check the car fits them. */
+  @IsOptional()
+  @Transform(trimToNull)
+  @IsString()
+  @MaxLength(500)
+  oversizedLuggage?: string | null;
 
   @IsBoolean()
   ageAdults: boolean;
@@ -96,6 +110,14 @@ export class CreateBookingDto extends CreateQuoteDto {
   @IsString()
   @MaxLength(1000)
   petInfo?: string | null;
+
+  /** The customer ticked "I agree to the Terms & Conditions". A booking without it is refused. */
+  @Equals(true, { message: 'Please agree to the Terms & Conditions' })
+  acceptTerms: boolean;
+
+  /** The version of the Terms & Conditions the customer saw, e.g. "2026-11-06". */
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'termsVersion must be a date such as 2026-11-06' })
+  termsVersion: string;
 
   /**
    * What to do when no vehicle is free at that time: false (default) refuses the booking so the

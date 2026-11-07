@@ -6,6 +6,21 @@ import { createBooking, type BookingReceipt } from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import { paymentLabel, surchargeBadge, yen } from "@/lib/api/format";
 import { requestQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
+import {
+  ESTIMATE_NOTE,
+  LUGGAGE_GUIDE,
+  LUGGAGE_SIZES,
+  OVERSIZED_EXAMPLES,
+  PET_PICKUP_TIME_HINT,
+  PET_POLICY,
+  PET_SUMMARY,
+  PICKUP_TIME_HINT,
+  TERMS,
+  TERMS_VERSION,
+  type LuggageSize,
+} from "@/lib/content";
+import InfoTip from "./InfoTip";
+import PolicyLink from "./PolicyLink";
 import TicketPreview, { type QuoteState } from "./TicketPreview";
 
 interface AgeGroups {
@@ -15,6 +30,15 @@ interface AgeGroups {
 }
 
 export type Direction = "from-airport" | "to-airport";
+
+/** Pieces per luggage size: up to this many can be chosen in each box. */
+const MAX_PER_SIZE = 10;
+
+/** "L=1, M=2" (sizes with none are left out), as staff read it in the Bookings Queue. */
+function luggageText(counts: Record<LuggageSize, number>): string {
+  const parts = LUGGAGE_SIZES.filter((s) => counts[s.key] > 0).map((s) => `${s.code}=${counts[s.key]}`);
+  return parts.length > 0 ? parts.join(", ") : "No luggage";
+}
 
 interface FormState {
   salutation: string;
@@ -27,11 +51,13 @@ interface FormState {
   airportId: string;
   serviceRegionId: string;
   address: string;
+  terminal: string;
   countryOrigin: string;
   hasFlightCode: "yes" | "no";
   flightCode: string;
   passengers: string;
-  luggage: string;
+  luggage: Record<LuggageSize, number>;
+  oversizedLuggage: string;
   ageGroups: AgeGroups;
   vehicleTypeId: string;
   paymentMethodId: string;
@@ -43,6 +69,7 @@ interface FormState {
   timesUsed: string;
   additionalRequests: string;
   petInfo: string;
+  acceptTerms: boolean;
 }
 
 const initialState = (options: ReservationOptions): FormState => ({
@@ -56,11 +83,13 @@ const initialState = (options: ReservationOptions): FormState => ({
   airportId: options.airports[0]?.id ?? "",
   serviceRegionId: "",
   address: "",
+  terminal: "",
   countryOrigin: "",
   hasFlightCode: "yes",
   flightCode: "",
   passengers: "",
-  luggage: "",
+  luggage: { large: 0, medium: 0, small: 0 },
+  oversizedLuggage: "",
   ageGroups: { adults: true, infants: false, children: false },
   vehicleTypeId: options.vehicleTypes[0]?.id ?? "",
   paymentMethodId: options.paymentMethods[0]?.id ?? "",
@@ -71,6 +100,7 @@ const initialState = (options: ReservationOptions): FormState => ({
   timesUsed: "First time",
   additionalRequests: "",
   petInfo: "",
+  acceptTerms: false,
 });
 
 const timesUsedOptions = ["First time", "Second time", "Third time", "More than three"];
@@ -93,6 +123,10 @@ export default function ReservationForm({ options }: { options: ReservationOptio
 
   function toggleAgeGroup(key: keyof AgeGroups) {
     setForm((prev) => ({ ...prev, ageGroups: { ...prev.ageGroups, [key]: !prev.ageGroups[key] } }));
+  }
+
+  function setLuggage(size: LuggageSize, count: number) {
+    setForm((prev) => ({ ...prev, luggage: { ...prev.luggage, [size]: count } }));
   }
 
   function setAddOn(id: string, quantity: number) {
@@ -157,13 +191,15 @@ export default function ReservationForm({ options }: { options: ReservationOptio
           .map(([addOnId, quantity]) => ({ addOnId, quantity })),
         direction: form.direction === "from-airport" ? "from_airport" : "to_airport",
         address: form.address,
+        terminal: form.terminal.trim() || null,
         flightCode: form.hasFlightCode === "yes" ? form.flightCode.trim() || null : null,
         salutation: form.salutation,
         passengerName: form.fullName,
         bookerName: form.bookingFor === "no" ? form.bookerName.trim() || null : null,
         countryOrigin: form.countryOrigin,
         passengers: form.passengers,
-        luggage: form.luggage,
+        luggage: luggageText(form.luggage),
+        oversizedLuggage: form.oversizedLuggage.trim() || null,
         ageAdults: form.ageGroups.adults,
         ageInfants: form.ageGroups.infants,
         ageChildren: form.ageGroups.children,
@@ -173,6 +209,8 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         timesUsed: form.timesUsed || null,
         additionalRequests: form.additionalRequests.trim() || null,
         petInfo: form.petInfo.trim() || null,
+        acceptTerms: form.acceptTerms,
+        termsVersion: TERMS_VERSION,
         joinWaitlist,
       });
       setReceipt(saved);
@@ -221,6 +259,12 @@ export default function ReservationForm({ options }: { options: ReservationOptio
     });
   }
   const fromAirport = form.direction === "from-airport";
+  const terminalLabel = fromAirport ? "Arrival terminal" : "Departure terminal";
+  const luggageSummary = luggageText(form.luggage);
+  const flightCode = form.hasFlightCode === "yes" ? form.flightCode.trim() : "";
+  const airportWithTerminal = [airport?.name, form.terminal.trim()].filter(Boolean).join(", ");
+  // Pets need longer at the airport (quarantine, customs); otherwise the standard 1–1.5 h after landing.
+  const pickupHint = form.petInfo.trim() ? PET_PICKUP_TIME_HINT : fromAirport ? PICKUP_TIME_HINT : null;
 
   return (
     <div className="layout">
@@ -248,14 +292,41 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   {fromAirport ? airport?.name : region?.name} → {fromAirport ? region?.name : airport?.name}
                 </dd>
               </div>
+              <div className="wide">
+                <dt>{fromAirport ? "Pick-up point" : "Pick-up address"}</dt>
+                <dd>{fromAirport ? airportWithTerminal : form.address}</dd>
+              </div>
+              <div className="wide">
+                <dt>{fromAirport ? "Drop-off address" : "Drop-off point"}</dt>
+                <dd>{fromAirport ? form.address : airportWithTerminal}</dd>
+              </div>
+              {flightCode && (
+                <div>
+                  <dt>Flight</dt>
+                  <dd>{flightCode}</dd>
+                </div>
+              )}
               <div>
                 <dt>Vehicle</dt>
                 <dd>{receipt.vehicleLabel}</dd>
               </div>
               <div>
-                <dt>{receipt.quoteRequired ? "Estimated from" : "Total"}</dt>
+                <dt>Passengers &amp; luggage</dt>
+                <dd>
+                  {form.passengers} · {luggageSummary}
+                </dd>
+              </div>
+              {form.oversizedLuggage.trim() && (
+                <div>
+                  <dt>Oversized luggage</dt>
+                  <dd>{form.oversizedLuggage.trim()}</dd>
+                </div>
+              )}
+              <div className="wide">
+                <dt>{receipt.quoteRequired ? "Estimated from" : "Estimated total"}</dt>
                 <dd>
                   {yen(receipt.totalJpy)} · {receipt.paymentLabel}
+                  <span className="dd-note">{ESTIMATE_NOTE}</span>
                 </dd>
               </div>
             </dl>
@@ -385,6 +456,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   value={form.pickupTime}
                   onChange={(e) => update("pickupTime", e.target.value)}
                 />
+                {pickupHint && <p className="field-hint">{pickupHint}</p>}
               </div>
             </div>
 
@@ -431,6 +503,22 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                 </select>
               </div>
               <div className="field">
+                <label htmlFor="terminal">
+                  {terminalLabel} <span className="hint">— optional</span>
+                </label>
+                <input
+                  type="text"
+                  id="terminal"
+                  placeholder="e.g. Terminal 3"
+                  maxLength={40}
+                  value={form.terminal}
+                  onChange={(e) => update("terminal", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ marginTop: 18 }}>
+              <div className="field">
                 <label htmlFor="serviceRegionId">
                   {fromAirport ? "Drop-off area" : "Pick-up area"} <span className="req">*</span>
                 </label>
@@ -463,20 +551,19 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   )}
                 </select>
               </div>
-            </div>
-
-            <div className="field" style={{ marginTop: 18 }}>
-              <label htmlFor="address">
-                {fromAirport ? "Drop-off address" : "Pick-up address"} <span className="req">*</span>
-              </label>
-              <input
-                type="text"
-                id="address"
-                placeholder="Hotel or building name and full address"
-                required
-                value={form.address}
-                onChange={(e) => update("address", e.target.value)}
-              />
+              <div className="field">
+                <label htmlFor="address">
+                  {fromAirport ? "Drop-off address" : "Pick-up address"} <span className="req">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  placeholder="Hotel or building name and full address"
+                  required
+                  value={form.address}
+                  onChange={(e) => update("address", e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="grid-2" style={{ marginTop: 18 }}>
@@ -547,33 +634,66 @@ export default function ReservationForm({ options }: { options: ReservationOptio
               <h2>Passengers &amp; luggage</h2>
             </div>
 
-            <div className="grid-2">
-              <div className="field">
-                <label htmlFor="passengers">
-                  Passengers <span className="req">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="passengers"
-                  placeholder="e.g. 1 adult, 2 children"
-                  required
-                  value={form.passengers}
-                  onChange={(e) => update("passengers", e.target.value)}
-                />
+            <div className="field">
+              <label htmlFor="passengers">
+                Passengers <span className="req">*</span>
+              </label>
+              <input
+                type="text"
+                id="passengers"
+                placeholder="e.g. 1 adult, 2 children"
+                required
+                value={form.passengers}
+                onChange={(e) => update("passengers", e.target.value)}
+              />
+            </div>
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <div className="label-row">
+                <span className="group-label">Suitcases</span>
+                <PolicyLink policy={LUGGAGE_GUIDE}>Luggage size guide</PolicyLink>
               </div>
-              <div className="field">
-                <label htmlFor="luggage">
-                  Luggage — Large / Medium / Small <span className="req">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="luggage"
-                  placeholder="e.g. L=1, M=2, S=1"
-                  required
-                  value={form.luggage}
-                  onChange={(e) => update("luggage", e.target.value)}
-                />
+              <div className="grid-3">
+                {LUGGAGE_SIZES.map((size) => (
+                  <div className="field" key={size.key}>
+                    <div className="label-row">
+                      <label htmlFor={`luggage-${size.key}`}>{size.label}</label>
+                      <InfoTip label={`${size.label} suitcase size`}>
+                        {size.label} ({size.code}): {size.size}
+                      </InfoTip>
+                    </div>
+                    <select
+                      id={`luggage-${size.key}`}
+                      value={form.luggage[size.key]}
+                      onChange={(e) => setLuggage(size.key, Number(e.target.value))}
+                    >
+                      {Array.from({ length: MAX_PER_SIZE + 1 }, (_, n) => (
+                        <option key={n} value={n}>
+                          {n === 0 ? "None" : n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
               </div>
+            </div>
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <label htmlFor="oversizedLuggage">
+                Oversized luggage <span className="hint">— optional</span>
+              </label>
+              <input
+                type="text"
+                id="oversizedLuggage"
+                placeholder="e.g. 1 golf bag, about 125 cm"
+                maxLength={500}
+                value={form.oversizedLuggage}
+                onChange={(e) => update("oversizedLuggage", e.target.value)}
+              />
+              <p className="field-hint">
+                {OVERSIZED_EXAMPLES}, and other bulky items. Our staff will check that your car can carry them, and
+                suggest a larger or additional vehicle if needed.
+              </p>
             </div>
 
             <div className="field" style={{ marginTop: 18 }}>
@@ -798,10 +918,14 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                 />
               </div>
               <div className="field">
-                <label htmlFor="petInfo">Pet information</label>
+                <div className="label-row">
+                  <label htmlFor="petInfo">Pet information</label>
+                  <InfoTip label="About travelling with pets">{PET_SUMMARY}</InfoTip>
+                  <PolicyLink policy={PET_POLICY}>Pet policy</PolicyLink>
+                </div>
                 <textarea
                   id="petInfo"
-                  placeholder="Breed, size, and cage dimensions"
+                  placeholder="Breed, approximate weight, and carrier or kennel dimensions"
                   value={form.petInfo}
                   onChange={(e) => update("petInfo", e.target.value)}
                 />
@@ -809,11 +933,42 @@ export default function ReservationForm({ options }: { options: ReservationOptio
             </div>
           </section>
 
+          {/* 05 Terms & Conditions */}
+          <section className="card">
+            <div className="card-head">
+              <span className="step-no">05</span>
+              <h2>Terms &amp; Conditions</h2>
+            </div>
+            <ol className="terms-list">
+              {TERMS.map((term) => (
+                <li key={term.title}>
+                  <strong>{term.title}:</strong> {term.text}
+                </li>
+              ))}
+            </ol>
+            <div className="terms-agree">
+              <input
+                type="checkbox"
+                id="acceptTerms"
+                required
+                checked={form.acceptTerms}
+                onChange={(e) => update("acceptTerms", e.target.checked)}
+              />
+              <label htmlFor="acceptTerms">
+                I have read and agree to these Terms &amp; Conditions. <span className="req">*</span>
+              </label>
+            </div>
+          </section>
+
           <div className="submit-row">
-            <button type="submit" className="submit-btn" disabled={submitting}>
+            <button type="submit" className="submit-btn" disabled={submitting || !form.acceptTerms}>
               {submitting ? "Saving your reservation…" : "Confirm reservation"}
             </button>
-            <p className="form-footnote">*Please complete all required fields before submitting.</p>
+            <p className="form-footnote">
+              {form.acceptTerms
+                ? "*Please complete all required fields before submitting."
+                : "Please agree to the Terms & Conditions to confirm your reservation."}
+            </p>
           </div>
           {submitError && (
             <div className="submit-error" role="alert">
@@ -837,8 +992,9 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         pickupTime={form.pickupTime}
         hasFlightCode={form.hasFlightCode}
         flightCode={form.flightCode}
+        terminal={form.terminal}
         passengers={form.passengers}
-        luggage={form.luggage}
+        luggage={luggageSummary === "No luggage" ? "" : luggageSummary}
         vehicleLabel={selectedVehicle?.label}
         paymentLabel={selectedPayment?.label}
         quote={quote}
