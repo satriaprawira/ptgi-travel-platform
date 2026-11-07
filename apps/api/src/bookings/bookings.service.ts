@@ -3,15 +3,11 @@ import { DatabaseService } from '../database/database.service.js';
 import { PricingService } from '../pricing/pricing.service.js';
 import { tokyoInstant } from '../pricing/quote.js';
 import { isPgError, PgErrorCode } from '../database/pg-error.js';
+import { SettingsRepository } from '../settings/settings.repository.js';
 import { BookingsRepository, type AssignmentOptions, type Booking } from './bookings.repository.js';
 import type { ConfirmBookingDto } from './dto/confirm-booking.dto.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
-
-/**
- * How long one booking keeps a vehicle busy, counted from the pickup time: the drive, the wait at
- * arrivals and the return. One value for every route until staff give per-route figures.
- */
-export const HOLD_HOURS = 3;
+import { holdUntil as holdUntilFor } from './hold.js';
 
 /** What the customer gets back: no internal ids, no other people's data. */
 export interface BookingReceipt {
@@ -32,6 +28,7 @@ export class BookingsService {
     private readonly db: DatabaseService,
     private readonly bookings: BookingsRepository,
     private readonly pricing: PricingService,
+    private readonly settings: SettingsRepository,
   ) {}
 
   /**
@@ -51,7 +48,8 @@ export class BookingsService {
     const addOns = selections.map((s) => ({ addOnId: s.addOnId, label: labels.get(s.addOnId) ?? '', quantity: s.quantity }));
 
     const pickupAt = tokyoInstant(dto.pickupDate, dto.pickupTime)!; // already validated by the quote
-    const holdUntil = new Date(pickupAt.getTime() + HOLD_HOURS * 3_600_000);
+    const { bufferMinutes } = await this.settings.get();
+    const holdUntil = holdUntilFor(pickupAt, bufferMinutes);
 
     const id = await this.db.transaction(async (client) => {
       await this.bookings.lockVehicleClass(client, vehicleClass.id);
@@ -69,6 +67,7 @@ export class BookingsService {
         vehicleClassId: vehicleClass.id,
         pickupAt,
         holdUntil,
+        bufferMinutes,
         priceLines: quote.lines,
         addOns,
         totalJpy: quote.totalJpy,

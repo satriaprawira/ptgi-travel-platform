@@ -62,9 +62,11 @@ export interface AdminBooking {
   /** The fleet type the booking needs, e.g. "Grand Cabin". */
   vehicleClassName: string;
   address: string;
-  /** Start and end of the time the vehicle is needed (ISO timestamps). */
+  /** Start and end of the time the vehicle is needed (ISO timestamps). holdUntil includes the buffer. */
   pickupAt: string;
   holdUntil: string;
+  /** The buffer between bookings this booking was made with; the trip itself ends this many minutes before holdUntil. */
+  bufferMinutes: number;
   /** Tokyo local date ("2026-10-16") and time ("14:30") of the pickup. */
   pickupDate: string;
   pickupTime: string;

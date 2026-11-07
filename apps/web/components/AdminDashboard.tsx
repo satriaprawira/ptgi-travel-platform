@@ -436,7 +436,12 @@ export default function AdminDashboard() {
             )}
 
             {activePanel === "availability" && (
-              <AvailabilityCalendar title={meta.title} description={meta.description} />
+              <AvailabilityCalendar
+                title={meta.title}
+                description={meta.description}
+                canEdit={isAdmin}
+                showToast={showToast}
+              />
             )}
 
             {activePanel === "drivers" && (

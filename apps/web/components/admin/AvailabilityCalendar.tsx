@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import styles from "../AdminDashboard.module.css";
 import { PanelHead, badgeClass } from "./ui";
 import { tripDateTime, yen } from "@/lib/api/format";
 import { getSchedule, type AdminBooking } from "@/lib/api/bookings";
 import { listDrivers, listVehicles, type Driver, type Vehicle } from "@/lib/api/fleet";
+import { getSettings, updateSettings, type BookingSettings } from "@/lib/api/settings";
 
 const DAY_MS = 24 * 3_600_000;
 const TOKYO_OFFSET_MS = 9 * 3_600_000; // Japan has no daylight saving time
@@ -41,6 +42,10 @@ function weekTitle(start: string): string {
 
 /** The Tokyo clock time ("17:30") of an ISO timestamp. */
 const tokyoTime = (iso: string) => new Date(Date.parse(iso) + TOKYO_OFFSET_MS).toISOString().slice(11, 16);
+
+/** When the trip itself ends: the hold minus the buffer between bookings (FT-12). */
+const tripEndMs = (booking: AdminBooking) => Date.parse(booking.holdUntil) - booking.bufferMinutes * 60_000;
+const tripEndTime = (booking: AdminBooking) => tokyoTime(new Date(tripEndMs(booking)).toISOString());
 
 const routeText = (booking: AdminBooking) =>
   booking.direction === "from_airport"
@@ -124,8 +129,16 @@ function BookingCard({ hovered }: { hovered: Hovered }) {
       <dl>
         <dt>When</dt>
         <dd>
-          {tripDateTime(booking.pickupDate, booking.pickupTime)} – {tokyoTime(booking.holdUntil)}
+          {tripDateTime(booking.pickupDate, booking.pickupTime)} – {tripEndTime(booking)}
         </dd>
+        {booking.bufferMinutes > 0 && (
+          <>
+            <dt>Car free</dt>
+            <dd>
+              from {tokyoTime(booking.holdUntil)} (incl. {booking.bufferMinutes} min buffer)
+            </dd>
+          </>
+        )}
         <dt>Route</dt>
         <dd>{routeText(booking)}</dd>
         <dt>Address</dt>
@@ -160,12 +173,89 @@ function BookingCard({ hovered }: { hovered: Hovered }) {
   );
 }
 
+/** The buffer between bookings: shown to everyone, changeable by admins. */
+function BufferSetting({ canEdit, showToast }: { canEdit: boolean; showToast: (message: string) => void }) {
+  const [settings, setSettings] = useState<BookingSettings | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getSettings()
+      .then(setSettings)
+      .catch(() => setSettings(null));
+  }, []);
+
+  if (!settings) return null;
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const saved = await updateSettings(Number(value));
+      setSettings(saved);
+      setEditing(false);
+      showToast(`Buffer set to ${saved.bufferMinutes} min. It applies to new bookings.`);
+    } catch (error) {
+      showToast(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className={styles.bufferSetting}>
+        <span>
+          Buffer between bookings: <strong>{settings.bufferMinutes} min</strong>
+        </span>
+        {canEdit && (
+          <button
+            className={styles.iconBtn}
+            onClick={() => {
+              setValue(String(settings.bufferMinutes));
+              setEditing(true);
+            }}
+          >
+            Change
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <form className={styles.bufferSetting} onSubmit={(event) => void save(event)}>
+      <label htmlFor="buffer-minutes">Buffer between bookings</label>
+      <input
+        id="buffer-minutes"
+        type="number"
+        required
+        min={0}
+        max={180}
+        step={5}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <span>min</span>
+      <button type="submit" className={styles.iconBtn} disabled={saving}>
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <button type="button" className={styles.iconBtn} onClick={() => setEditing(false)} disabled={saving}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 interface Props {
   title: string;
   description: string;
+  /** Admins can change the buffer between bookings; staff see it. */
+  canEdit: boolean;
+  showToast: (message: string) => void;
 }
 
-export default function AvailabilityCalendar({ title, description }: Props) {
+export default function AvailabilityCalendar({ title, description, canEdit, showToast }: Props) {
   const [week, setWeek] = useState(() => weekStart(todayInTokyo()));
   const [schedule, setSchedule] = useState<AdminBooking[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -227,7 +317,7 @@ export default function AvailabilityCalendar({ title, description }: Props) {
 
   return (
     <>
-      <PanelHead title={title} description={description} />
+      <PanelHead title={title} description={description} action={<BufferSetting canEdit={canEdit} showToast={showToast} />} />
 
       {loadError && (
         <div className={styles.alert} role="alert">
@@ -285,7 +375,7 @@ export default function AvailabilityCalendar({ title, description }: Props) {
         </div>
         <div className={styles.cardSub}>
           {loading ? "Loading…" : `${confirmedCount} confirmed ${confirmedCount === 1 ? "trip" : "trips"} this week`}, Japan
-          time. Hover a block for details.
+          time. Hover a block for details; its shaded end is the buffer before the car can take another booking.
           <label className={styles.calToggle}>
             <input type="checkbox" checked={showHolds} onChange={(e) => setShowHolds(e.target.checked)} /> Also show new
             requests not confirmed yet ({holdCount})
@@ -320,6 +410,9 @@ export default function AvailabilityCalendar({ title, description }: Props) {
                 {date === today && <div className={styles.calNow} style={{ top: `${nowPosition * 100}%` }} aria-hidden="true" />}
                 {layOutDay(shown, date).map(({ booking, start, end, column, columns }) => {
                   const startsEarlier = booking.pickupDate !== date;
+                  // The buffer is the last part of the hold; shade the share of it that falls on this day.
+                  const bufferStart = (tripEndMs(booking) - Date.parse(`${date}T00:00:00+09:00`)) / DAY_MS;
+                  const bufferShare = Math.min(Math.max((end - Math.max(bufferStart, start)) / (end - start), 0), 1);
                   return (
                     <button
                       key={booking.id}
@@ -340,10 +433,13 @@ export default function AvailabilityCalendar({ title, description }: Props) {
                       {/* Side-by-side blocks are too narrow for the full range. */}
                       <b>
                         {startsEarlier ? "…" : booking.pickupTime}
-                        {columns === 1 || startsEarlier ? `–${tokyoTime(booking.holdUntil)}` : ""}
+                        {columns === 1 || startsEarlier ? `–${tripEndTime(booking)}` : ""}
                       </b>
                       <span>{booking.vehicle ? booking.vehicle.plateNumber : booking.vehicleClassName}</span>
                       <span>{booking.driver ? booking.driver.fullName : "Not assigned"}</span>
+                      {bufferShare > 0 && (
+                        <i className={styles.calBuffer} style={{ height: `${bufferShare * 100}%` }} aria-hidden="true" />
+                      )}
                     </button>
                   );
                 })}

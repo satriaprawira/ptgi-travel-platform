@@ -9,6 +9,7 @@ import { FaresModule } from './fares/fares.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
 import { ReservationOptionsModule } from './reservation-options/reservation-options.module.js';
+import { SettingsModule } from './settings/settings.module.js';
 import { SurchargesModule } from './surcharges/surcharges.module.js';
 import { UsersModule } from './users/users.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
@@ -29,6 +30,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     DriversModule,
     FaresModule,
     SurchargesModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
