@@ -2,6 +2,7 @@
 
 import { yen } from "@/lib/api/format";
 import type { Quote } from "@/lib/api/reservation";
+import { ESTIMATE_NOTE } from "@/lib/content";
 
 export type QuoteState =
   | { status: "idle" }
@@ -18,6 +19,7 @@ interface TicketPreviewProps {
   pickupTime: string;
   hasFlightCode: "yes" | "no";
   flightCode: string;
+  terminal: string;
   passengers: string;
   luggage: string;
   vehicleLabel?: string;
@@ -66,12 +68,13 @@ function PriceBlock({ state }: { state: QuoteState }) {
         ))}
       </ul>
       <div className="price-total">
-        <span>{quote.quoteRequired ? "Estimated from" : "Total"}</span>
+        <span>{quote.quoteRequired ? "Estimated from" : "Estimated Booking Cost"}</span>
         <span>{yen(quote.totalJpy)}</span>
       </div>
       {quote.quoteRequired && (
         <p className="price-note">Part of this trip is quoted by our staff. We&apos;ll confirm the final price by email.</p>
       )}
+      <p className="price-estimate-note">{ESTIMATE_NOTE}</p>
     </div>
   );
 }
@@ -85,6 +88,7 @@ export default function TicketPreview({
   pickupTime,
   hasFlightCode,
   flightCode,
+  terminal,
   passengers,
   luggage,
   vehicleLabel,
@@ -95,7 +99,9 @@ export default function TicketPreview({
     ? [salutation, fullName.trim()].filter(Boolean).join(" ")
     : "Add your name above";
   const partyLabel = [passengers.trim(), luggage.trim()].filter(Boolean).join(" · ") || "—";
-  const flightLabel = hasFlightCode === "yes" ? flightCode.trim() || "—" : "No code";
+  const flightLabel = [hasFlightCode === "yes" ? flightCode.trim() || "—" : "No code", terminal.trim()]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <aside className="ticket-col">

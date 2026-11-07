@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 // Placeholder — the real home page will be defined later.
 export default function Home() {
@@ -9,6 +10,7 @@ export default function Home() {
       <div><Link href="/login">Login</Link></div>
       <div><Link href="/reservation-form">Reserve an airport pickup</Link></div>
       <div><Link href="/admin">Admin</Link></div>
+      <WhatsAppButton />
     </main>
   );
 }

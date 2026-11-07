@@ -11,13 +11,17 @@ export type TripDirection = "from_airport" | "to_airport";
 export interface BookingRequest extends QuoteRequest {
   direction: TripDirection;
   address: string;
+  /** Arrival (from the airport) or departure (to the airport) terminal, e.g. "Terminal 3". */
+  terminal: string | null;
   flightCode: string | null;
   salutation: string;
   passengerName: string;
   bookerName: string | null;
   countryOrigin: string;
   passengers: string;
+  /** e.g. "L=1, M=2", or "No luggage". */
   luggage: string;
+  oversizedLuggage: string | null;
   ageAdults: boolean;
   ageInfants: boolean;
   ageChildren: boolean;
@@ -27,6 +31,10 @@ export interface BookingRequest extends QuoteRequest {
   timesUsed: string | null;
   additionalRequests: string | null;
   petInfo: string | null;
+  /** Must be true: the customer ticked "I agree to the Terms & Conditions". */
+  acceptTerms: boolean;
+  /** lib/content.ts TERMS_VERSION, stored with the booking. */
+  termsVersion: string;
   /** When no car is free: true saves the request on the waiting list instead of refusing it. */
   joinWaitlist?: boolean;
 }
@@ -61,6 +69,7 @@ export interface AdminBooking {
   pickupDate: string;
   pickupTime: string;
   flightCode: string | null;
+  terminal: string | null;
   vehicleLabel: string;
   paymentLabel: string;
   priceLines: QuoteLine[];
@@ -79,6 +88,7 @@ export interface AdminBooking {
   countryOrigin: string;
   passengers: string;
   luggage: string;
+  oversizedLuggage: string | null;
   ageAdults: boolean;
   ageInfants: boolean;
   ageChildren: boolean;
@@ -88,6 +98,9 @@ export interface AdminBooking {
   timesUsed: string | null;
   additionalRequests: string | null;
   petInfo: string | null;
+  /** Which Terms & Conditions the customer agreed to, and when. Null for bookings made before the checkbox existed. */
+  termsVersion: string | null;
+  termsAcceptedAt: string | null;
   createdAt: string;
 }
 

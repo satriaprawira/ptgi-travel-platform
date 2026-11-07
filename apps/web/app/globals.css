@@ -168,6 +168,11 @@ a {
   grid-template-columns: repeat(2, 1fr);
   gap: 18px 20px;
 }
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
 .grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -202,6 +207,216 @@ a {
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* A label with an ⓘ tip and/or a policy link beside it. */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.label-row .policy-link {
+  margin-left: auto;
+}
+.grid-3 .label-row {
+  flex-wrap: nowrap;
+}
+.group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.field-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* ---------- ⓘ tooltip ---------- */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+}
+.info-tip-btn {
+  display: inline-flex;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  cursor: help;
+  border-radius: 50%;
+}
+.info-tip-btn:hover,
+.info-tip-btn[aria-expanded="true"] {
+  color: var(--indigo);
+}
+.info-tip-btn:focus-visible {
+  outline: 2px solid var(--indigo);
+}
+.info-tip-bubble {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: -10px;
+  width: max-content;
+  max-width: min(260px, 70vw);
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  box-shadow: 0 10px 24px -12px rgba(20, 33, 61, 0.5);
+}
+
+/* ---------- Policy link + dialog ---------- */
+.policy-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: 500 12.5px var(--font-body), sans-serif;
+  color: var(--indigo);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.policy-link:hover {
+  color: var(--accent);
+}
+.policy-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 30px 60px -20px rgba(20, 33, 61, 0.45);
+}
+.policy-dialog::backdrop {
+  background: rgba(20, 33, 61, 0.45);
+}
+.policy-dialog-body {
+  padding: 26px 28px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.policy-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.policy-dialog h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 20px;
+  color: var(--ink);
+}
+.policy-dialog h3 {
+  margin: 0 0 4px;
+  font-size: 14.5px;
+  color: var(--ink);
+}
+.policy-dialog ol {
+  margin: 14px 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 12px;
+}
+.policy-dialog li::marker {
+  font-weight: 600;
+  color: var(--ink);
+}
+.policy-dialog p {
+  margin: 0 0 6px;
+}
+.policy-dialog-close {
+  border: none;
+  background: none;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.policy-dialog-done {
+  margin-top: 6px;
+  font: 600 14px var(--font-body), sans-serif;
+  color: #fff;
+  background: var(--indigo);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+/* ---------- Terms & Conditions ---------- */
+.terms-list {
+  margin: 0;
+  padding: 14px 16px 14px 34px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: grid;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+}
+.terms-list strong {
+  color: var(--ink);
+}
+.terms-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.terms-agree input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--indigo);
+  flex: none;
+}
+.terms-agree .req {
+  color: var(--accent);
+}
+
+/* ---------- Floating WhatsApp button (customer pages) ---------- */
+.whatsapp-float {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 50;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 12px 28px -10px rgba(20, 33, 61, 0.55);
+  transition: transform 0.15s ease;
+}
+.whatsapp-float:hover {
+  transform: translateY(-2px);
+}
+.whatsapp-float:focus-visible {
+  outline: 3px solid var(--indigo);
+  outline-offset: 3px;
 }
 
 input[type="text"],
@@ -539,6 +754,15 @@ select {
   margin: 3px 0 0;
   color: var(--ink);
 }
+.booking-summary .wide {
+  grid-column: 1 / -1;
+}
+.booking-summary .dd-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
 @media (max-width: 560px) {
   .booking-summary {
     grid-template-columns: 1fr;
@@ -726,6 +950,12 @@ select {
   font-size: 12px;
   line-height: 1.5;
   color: var(--accent);
+}
+.price-estimate-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
 }
 .barcode {
   height: 32px;

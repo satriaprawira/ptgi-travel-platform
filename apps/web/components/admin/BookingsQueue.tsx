@@ -28,6 +28,16 @@ type StatusFilter = "all" | BookingStatus;
 
 const pickupText = (booking: AdminBooking) => tripDateTime(booking.pickupDate, booking.pickupTime);
 
+// When the customer agreed to the Terms & Conditions, in Japan time.
+const agreedAt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Tokyo",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 function routeText(booking: AdminBooking): string {
   return booking.direction === "from_airport"
     ? `${booking.airport.name} → ${booking.regionName}`
@@ -418,10 +428,12 @@ function BookingDetails({ booking }: { booking: AdminBooking }) {
 
   const items: [string, string | null][] = [
     [booking.direction === "from_airport" ? "Drop-off address" : "Pick-up address", booking.address],
+    [booking.direction === "from_airport" ? "Arrival terminal" : "Departure terminal", booking.terminal],
     ["Flight", booking.flightCode],
     ["Passengers", booking.passengers],
     ["Ages travelling", ages.join(", ") || null],
     ["Luggage", booking.luggage],
+    ["Oversized luggage", booking.oversizedLuggage],
     ["Contact", `${booking.email} · ${booking.phoneCountryCode} ${booking.phone}`],
     ["Booked by", booking.bookerName],
     ["Payment", booking.paymentLabel],
@@ -435,6 +447,12 @@ function BookingDetails({ booking }: { booking: AdminBooking }) {
     ["Used our service", booking.timesUsed],
     ["Other requests", booking.additionalRequests],
     ["Pets", booking.petInfo],
+    [
+      "Terms & Conditions",
+      booking.termsAcceptedAt
+        ? `Agreed to version ${booking.termsVersion} on ${agreedAt.format(new Date(booking.termsAcceptedAt))}`
+        : null,
+    ],
   ];
 
   return (
