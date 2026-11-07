@@ -73,6 +73,7 @@ src/
   payment-methods/      payment methods (read)
   fares/                route pricing: base fare per airport and area (admin)
   surcharges/           everything added on top of the fare (admin); time-windows.ts = overlap check
+  settings/             booking rules staff can change: the buffer between bookings (admin)
   vehicles/             fleet vehicles + vehicle classes (admin)
   drivers/              drivers and their assigned vehicle (admin)
 ```
@@ -92,7 +93,7 @@ section 7.1 of the design doc.
 | GET, POST | `/v1/admin/users` | Admin only. POST `{ fullName, email, role }` (`admin` / `staff`) → `{ user, temporaryPassword }`; the password is shown once and must be changed at first sign-in. Duplicate email → 409 |
 | GET, PATCH | `/v1/admin/users/:id` | Admin only. `fullName`, `email`, `role`, `status` (`active` / `disabled`). Disabling signs the user out at once. You can't demote or disable yourself, and the last active admin can't be removed (409). No delete |
 | POST | `/v1/admin/users/:id/reset-password` | Admin only. New `temporaryPassword`; the user's sessions end. Not for your own account (409) |
-| POST | `/v1/bookings` | Public. The reservation form's "Confirm reservation": the quote fields plus `direction`, `address`, passenger and contact details, optional `terminal` and `oversizedLuggage`, and `acceptTerms: true` with the `termsVersion` the customer saw (without them → 400; both are stored with the booking). The price is recalculated server-side and stored with the booking. Status starts as `new` and a vehicle of the type's class is held from the pickup time for `HOLD_HOURS` (3 h, `bookings.service.ts`). No vehicle free at that time → 409, unless `joinWaitlist: true` is sent: then it is saved as `waitlisted`, holding nothing. Returns the booking number (`GI-YYMM-NNNN`) and price |
+| POST | `/v1/bookings` | Public. The reservation form's "Confirm reservation": the quote fields plus `direction`, `address`, passenger and contact details, optional `terminal` and `oversizedLuggage`, and `acceptTerms: true` with the `termsVersion` the customer saw (without them → 400; both are stored with the booking). The price is recalculated server-side and stored with the booking. Status starts as `new` and a vehicle of the type's class is held from the pickup time for `HOLD_HOURS` (3 h) plus the buffer between bookings (`booking_settings`, default 30 min; `bookings/hold.ts`). The buffer each booking used is stored with it (`bufferMinutes`). No vehicle free at that time → 409, unless `joinWaitlist: true` is sent: then it is saved as `waitlisted`, holding nothing. Returns the booking number (`GI-YYMM-NNNN`) and price |
 | GET | `/v1/admin/bookings`, `/v1/admin/bookings/:id` | Staff queue: new requests first, then by pickup time |
 | GET | `/v1/admin/bookings/schedule?date=YYYY-MM-DD&days=N` | `new` and `confirmed` bookings that occupy a vehicle during `days` Tokyo days from `date` (default 1, max 31; the admin calendar asks for 7). A trip crossing midnight belongs to both days |
 | GET | `/v1/admin/bookings/waitlist` | Waitlisted bookings in joining order, each with `slotFree` (a vehicle of its class is free for its time right now). The Bookings Queue uses it to enable "Move to bookings" |
@@ -101,7 +102,8 @@ section 7.1 of the design doc.
 | POST | `/v1/admin/bookings/:id/confirm` | `new` → `confirmed`. Body `{ vehicleId, driverId, finalTotalJpy? }`: assigns the vehicle and driver for the trip. Either one not free → 422, or 409 if taken a moment ago (exclusion constraints `bookings_vehicle_no_overlap` / `bookings_driver_no_overlap`). `finalTotalJpy` is required for quote-required bookings and refused for fixed-price ones. Not `new` any more → 409 |
 | POST | `/v1/admin/bookings/:id/cancel` | `new`, `confirmed` or `waitlisted` → `cancelled`; releases the held vehicle and the assigned vehicle and driver. Already cancelled → 409 |
 | POST | `/v1/quotes` | Public. Prices a trip from `airportId`, `serviceRegionId`, `vehicleTypeId`, `paymentMethodId`, `pickupDate`, `pickupTime` (Tokyo time) and optional `addOns: [{ addOnId, quantity }]`. Returns the line items, `totalJpy` and `quoteRequired` (then `totalJpy` is the "from" price). A past pickup, unknown ids or too many of an add-on → 422 |
-| GET | `/v1/admin/vehicle-classes` | Seeded list: Standard car, Medium car, New Alphard, Grand Cabin, Bus |
+| GET | `/v1/admin/vehicle-classes` | Standard car, Alphard 2.0, Alphard 3.0, Alphard 4.0, Grand Cabin, Bus (migration `revise-vehicle-categories` replaced Medium car with Alphard 2.0 / 3.0) |
+| GET, PATCH | `/v1/admin/settings` | Booking rules: `{ bufferMinutes }` (0–180), the time added after each booking's 3-hour hold before its car can take another booking. Everyone signed in reads; PATCH is admin only and applies to new bookings |
 | GET, POST | `/v1/admin/vehicles` | Plate is trimmed and uppercased; duplicate plate → 409 |
 | GET, PATCH, DELETE | `/v1/admin/vehicles/:id` | Deleting unassigns its usual driver; a vehicle that has bookings can't be deleted (409, retire it instead). Responses include `currentTrip` and `nextTrip`, derived from confirmed bookings |
 | GET | `/v1/admin/fares` | Route pricing: every airport ⇄ area base fare, in price-sheet order |

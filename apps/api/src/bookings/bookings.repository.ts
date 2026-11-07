@@ -27,6 +27,7 @@ interface BookingRow {
   address: string;
   pickup_at: Date;
   hold_until: Date;
+  buffer_minutes: number;
   pickup_date: string;
   pickup_time: string;
   flight_code: string | null;
@@ -78,7 +79,10 @@ export interface Booking {
   vehicleClassName: string;
   address: string;
   pickupAt: Date;
+  /** When the car is free again: pickup + 3 hours + bufferMinutes. */
   holdUntil: Date;
+  /** The buffer between bookings this booking was made with (FT-12); the trip itself ends bufferMinutes before holdUntil. */
+  bufferMinutes: number;
   /** Tokyo local date and time of the pickup, as the customer entered them. */
   pickupDate: string;
   pickupTime: string;
@@ -132,6 +136,7 @@ export interface NewBooking {
   vehicleClassId: string;
   pickupAt: Date;
   holdUntil: Date;
+  bufferMinutes: number;
   priceLines: QuoteLine[];
   addOns: BookedAddOn[];
   totalJpy: number;
@@ -184,7 +189,7 @@ const INSERT_BOOKING = `
     salutation, passenger_name, booker_name, country_origin, passengers, luggage,
     age_adults, age_infants, age_children, email, phone_country_code, phone,
     times_used, additional_requests, pet_info, status,
-    terminal, oversized_luggage, terms_version, terms_accepted_at
+    terminal, oversized_luggage, terms_version, terms_accepted_at, buffer_minutes
   ) VALUES (
     'GI-' || to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYMM') || '-'
           || lpad(nextval('booking_reference_seq')::text, 4, '0'),
@@ -194,7 +199,7 @@ const INSERT_BOOKING = `
     $15, $16, $17, $18, $19, $20,
     $21, $22, $23, $24, $25, $26,
     $27, $28, $29, $30::booking_status,
-    $31, $32, $33, now()
+    $31, $32, $33, now(), $34
   )
   RETURNING id`;
 
@@ -202,7 +207,7 @@ const SELECT_BOOKINGS = `
   SELECT b.id, b.reference, b.status, b.direction,
          a.code AS airport_code, a.name AS airport_name, r.name AS region_name,
          vc.name AS vehicle_class_name,
-         b.address, b.pickup_at, b.hold_until,
+         b.address, b.pickup_at, b.hold_until, b.buffer_minutes,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD') AS pickup_date,
          to_char(b.pickup_at AT TIME ZONE 'Asia/Tokyo', 'HH24:MI') AS pickup_time,
          b.flight_code, b.terminal, b.vehicle_label, b.payment_label, b.price_lines, b.add_ons,
@@ -298,6 +303,7 @@ function toBooking(row: BookingRow): Booking {
     address: row.address,
     pickupAt: row.pickup_at,
     holdUntil: row.hold_until,
+    bufferMinutes: row.buffer_minutes,
     pickupDate: row.pickup_date,
     pickupTime: row.pickup_time,
     flightCode: row.flight_code,
@@ -412,6 +418,7 @@ export class BookingsRepository {
       dto.terminal ?? null,
       dto.oversizedLuggage ?? null,
       dto.termsVersion,
+      booking.bufferMinutes,
     ]);
     return rows[0].id;
   }
