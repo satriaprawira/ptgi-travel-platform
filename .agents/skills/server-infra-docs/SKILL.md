@@ -41,6 +41,8 @@ Whenever providing terminal commands for the server or editing Docker configs, s
    - `node-pg-migrate` is declared in `devDependencies`. Always use `COPY --from=builder /app/node_modules ./node_modules` in the `runner` stage of `apps/api/Dockerfile` so `./node_modules/.bin/node-pg-migrate` is available when the container starts.
 5. **Strict `.dockerignore` Files:**
    - Both `apps/api/.dockerignore` and `apps/web/.dockerignore` must exclude `node_modules`, `dist`, `.next`, `.env`, and `.env.*` so local `.env.local` files never override production build arguments.
+6. **Prevent Nginx `502 Bad Gateway` on Container Recreate:**
+   - Always configure `resolver 127.0.0.11 valid=5s ipv6=off;` with variable upstreams (`set $api_upstream http://api:4000;`) in `nginx.conf` and run `docker compose -f docker-compose.prod.yml restart nginx` after `up -d` so Nginx never caches stale container IPs.
 
 ---
 

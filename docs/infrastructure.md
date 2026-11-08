@@ -129,11 +129,11 @@ gunzip -c /opt/ptgi/backups/<BACKUP_FILENAME>.sql.gz | docker compose -f /opt/pt
      sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
      ```
 
-### Issue 2: `nginx` Restarts with `host not found in upstream "api"`
-- **Cause:** `nginx` started before `api` was running, or `api` crashed on startup.
+### Issue 2: `nginx` Returns `502 Bad Gateway` or Restarts with `host not found in upstream "api"`
+- **Cause:** When `api` or `web` is recreated by `docker compose up -d`, Docker assigns a new container IP, or `api` is still running `node-pg-migrate up` for the first ~3 seconds. [`nginx.conf`](../nginx.conf) uses Docker's internal DNS resolver (`127.0.0.11 valid=5s`) and CI/CD runs `restart nginx` automatically.
 - **Fix:** Check the `api` logs, ensure `api` is `Up`, then restart `nginx`:
   ```bash
-  cd /opt/ptgi && docker compose -f docker-compose.prod.yml logs --tail=50 api && docker compose -f docker-compose.prod.yml restart nginx
+  cd /opt/ptgi && docker compose -f docker-compose.prod.yml restart nginx && sleep 3 && curl -i http://localhost/v1/health
   ```
 
 ### Issue 3: Useful Diagnostic Commands
