@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import styles from "../AdminDashboard.module.css";
+import RescheduleModal from "./RescheduleModal";
 import { FormModal, PanelHead, TableMessage, badgeClass } from "./ui";
 import type { BadgeVariant } from "@/lib/adminData";
 import { tripDateTime, yen } from "@/lib/api/format";
@@ -68,13 +69,18 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Confirming assigns the vehicle and driver for the trip (and the final price if it was quoted).
+  // Confirming assigns the vehicle and driver for the trip, or a partner car (and the final price if it
+  // was quoted).
   const [confirming, setConfirming] = useState<AdminBooking | null>(null);
   const [options, setOptions] = useState<AssignmentOptions | null>(null);
+  const [assignWith, setAssignWith] = useState<"fleet" | "partner">("fleet");
   const [vehicleId, setVehicleId] = useState("");
   const [driverId, setDriverId] = useState("");
+  const [partner, setPartner] = useState({ vehicle: "", driverName: "", driverPhone: "" });
   const [finalPrice, setFinalPrice] = useState("");
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Moving a booking to another time (FT-10).
+  const [editing, setEditing] = useState<AdminBooking | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,8 +115,10 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
   const startConfirm = async (booking: AdminBooking) => {
     setConfirming(booking);
     setOptions(null);
+    setAssignWith(booking.holdsFleetCar ? "fleet" : "partner");
     setVehicleId("");
     setDriverId("");
+    setPartner({ vehicle: "", driverName: "", driverPhone: "" });
     setFinalPrice("");
     setConfirmError(null);
     try {
@@ -119,6 +127,8 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
       const vehicle = free.vehicles[0];
       setVehicleId(vehicle?.id ?? "");
       setDriverId(usualDriver(free, vehicle?.id) ?? free.drivers[0]?.id ?? "");
+      // Nothing in the fleet is free: start on the partner car option.
+      if (free.vehicles.length === 0 || free.drivers.length === 0) setAssignWith("partner");
     } catch (error) {
       setConfirmError(errorMessage(error));
     }
@@ -135,11 +145,20 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
     setBusyId(confirming.id);
     setConfirmError(null);
     try {
-      await confirmBooking(confirming.id, {
-        vehicleId,
-        driverId,
-        ...(confirming.quoteRequired ? { finalTotalJpy: Number(finalPrice) } : {}),
-      });
+      const price = confirming.quoteRequired ? { finalTotalJpy: Number(finalPrice) } : {};
+      await confirmBooking(
+        confirming.id,
+        assignWith === "fleet"
+          ? { vehicleId, driverId, ...price }
+          : {
+              partner: {
+                vehicle: partner.vehicle,
+                driverName: partner.driverName,
+                driverPhone: partner.driverPhone.trim() || null,
+              },
+              ...price,
+            },
+      );
       showToast(`${confirming.reference} confirmed`);
       setConfirming(null);
       await load();
@@ -150,12 +169,27 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
     }
   };
 
-  // Waiting list → New Request: takes a hold on a car, so it only works once one is free.
+  // Waiting list → New Request. Normally it takes a hold on a car; with no car free, staff can move it
+  // anyway (overbook) and confirm it with a partner car later (FT-11).
   const moveToBookings = async (booking: AdminBooking) => {
+    const overbook = !slotFree[booking.id];
+    if (
+      overbook &&
+      !window.confirm(
+        `No ${booking.vehicleClassName} is free for ${booking.reference} at that time.\n\n` +
+          "Move it to bookings anyway? It won't hold a fleet car: confirm it with a partner car, or a fleet car if one frees up.",
+      )
+    ) {
+      return;
+    }
     setBusyId(booking.id);
     try {
-      await promoteBooking(booking.id);
-      showToast(`${booking.reference} is now a New Request; a car is held for it`);
+      await promoteBooking(booking.id, overbook);
+      showToast(
+        overbook
+          ? `${booking.reference} is now a New Request (overbooked, no fleet car held)`
+          : `${booking.reference} is now a New Request; a car is held for it`,
+      );
       await load();
     } catch (error) {
       showToast(errorMessage(error));
@@ -254,6 +288,9 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                     <td className={styles.mono}>{priceText(booking)}</td>
                     <td>
                       <span className={badgeClass(STATUS[booking.status].variant)}>{STATUS[booking.status].label}</span>
+                      {booking.status === "new" && !booking.holdsFleetCar && (
+                        <span className={styles.cellSubWarn}>Overbooked: no fleet car held</span>
+                      )}
                       {booking.status === "new" && booking.quoteRequired && (
                         <span className={styles.cellSub}>Needs a quote</span>
                       )}
@@ -266,6 +303,9 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                         <span className={styles.cellSub}>
                           {booking.driver.fullName} · {booking.vehicle.plateNumber}
                         </span>
+                      )}
+                      {booking.status === "confirmed" && booking.partner && (
+                        <span className={styles.cellSub}>Partner: {booking.partner.driverName}</span>
                       )}
                     </td>
                     <td>
@@ -286,14 +326,27 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                             Confirm
                           </button>
                         )}
+                        {(booking.status === "new" || booking.status === "confirmed") && (
+                          <button
+                            className={styles.iconBtn}
+                            onClick={() => setEditing(booking)}
+                            disabled={busyId === booking.id}
+                          >
+                            Edit
+                          </button>
+                        )}
                         {booking.status === "waitlisted" && (
                           <button
                             className={styles.iconBtn}
                             onClick={() => void moveToBookings(booking)}
-                            disabled={!slotFree[booking.id] || busyId === booking.id}
-                            title={slotFree[booking.id] ? undefined : "No car of this type is free at that time yet"}
+                            disabled={busyId === booking.id}
+                            title={
+                              slotFree[booking.id]
+                                ? undefined
+                                : "No car of this type is free at that time: it will hold no fleet car"
+                            }
                           >
-                            Move to bookings
+                            {slotFree[booking.id] ? "Move to bookings" : "Move anyway (overbook)"}
                           </button>
                         )}
                         {booking.status !== "cancelled" && (
@@ -332,7 +385,12 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
           </span>
           <span>
             A Waiting List request holds nothing: no car of its type was free. Once one is, Move to bookings turns
-            it into a New Request.
+            it into a New Request. If none frees up, Move anyway overbooks it: it holds no fleet car, and you confirm
+            it with a partner car.
+          </span>
+          <span>
+            Edit moves a new or confirmed booking to another time. The new time must have a free car, including the
+            buffer between bookings.
           </span>
         </p>
       )}
@@ -353,6 +411,69 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
             </p>
             {!options && !confirmError && <p className={styles.fieldHint}>Checking who is free at that time…</p>}
             {options && (
+              <div className={styles.field}>
+                <span className={styles.groupLabel}>Who does the trip</span>
+                <div className={styles.choiceList} style={{ flexDirection: "row", gap: 18 }}>
+                  <label>
+                    <input
+                      type="radio"
+                      name="assign-with"
+                      checked={assignWith === "fleet"}
+                      onChange={() => setAssignWith("fleet")}
+                    />
+                    Fleet vehicle
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="assign-with"
+                      checked={assignWith === "partner"}
+                      onChange={() => setAssignWith("partner")}
+                    />
+                    Partner vehicle
+                  </label>
+                </div>
+              </div>
+            )}
+            {options && assignWith === "partner" && (
+              <>
+                <div className={styles.field}>
+                  <label htmlFor="partner-vehicle">Partner vehicle</label>
+                  <input
+                    id="partner-vehicle"
+                    required
+                    maxLength={120}
+                    placeholder="e.g. Toyota Alphard · Tokyo Limo Co."
+                    value={partner.vehicle}
+                    onChange={(e) => setPartner((prev) => ({ ...prev, vehicle: e.target.value }))}
+                  />
+                </div>
+                <div className={styles.grid2}>
+                  <div className={styles.field}>
+                    <label htmlFor="partner-driver">Driver name</label>
+                    <input
+                      id="partner-driver"
+                      required
+                      maxLength={100}
+                      value={partner.driverName}
+                      onChange={(e) => setPartner((prev) => ({ ...prev, driverName: e.target.value }))}
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label htmlFor="partner-phone">Driver phone (optional)</label>
+                    <input
+                      id="partner-phone"
+                      type="tel"
+                      placeholder="+81 90-0000-0000"
+                      value={partner.driverPhone}
+                      onChange={(e) => setPartner((prev) => ({ ...prev, driverPhone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <p className={styles.fieldHint}>A partner car doesn&apos;t use any fleet vehicle or driver.</p>
+              </>
+            )}
+            {options && assignWith === "fleet" && (
               <>
                 <div className={styles.field}>
                   <label htmlFor="booking-vehicle">Vehicle</label>
@@ -409,6 +530,16 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
           </>
         )}
       </FormModal>
+
+      <RescheduleModal
+        booking={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(saved) => {
+          setEditing(null);
+          showToast(`${saved.reference} moved to ${pickupText(saved)}`);
+          void load();
+        }}
+      />
     </>
   );
 }
@@ -441,8 +572,11 @@ function BookingDetails({ booking }: { booking: AdminBooking }) {
       booking.status === "cancelled" ? "Was assigned to" : "Assigned",
       booking.vehicle && booking.driver
         ? `${booking.driver.fullName} (${booking.driver.phone}) · ${booking.vehicle.model} ${booking.vehicle.plateNumber}`
-        : null,
+        : booking.partner
+          ? `Partner car: ${booking.partner.vehicle} · ${booking.partner.driverName}${booking.partner.driverPhone ? ` (${booking.partner.driverPhone})` : ""}`
+          : null,
     ],
+    ["Fleet car", booking.status === "new" && !booking.holdsFleetCar ? "None held (overbooked)" : null],
     ["Extras", booking.addOns.map((a) => `${a.label} × ${a.quantity}`).join(", ") || null],
     ["Used our service", booking.timesUsed],
     ["Other requests", booking.additionalRequests],

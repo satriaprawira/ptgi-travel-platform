@@ -66,6 +66,10 @@ interface BookingRow {
   driver_id: string | null;
   driver_full_name: string | null;
   driver_phone: string | null;
+  holds_fleet_car: boolean;
+  partner_vehicle: string | null;
+  partner_driver: string | null;
+  partner_phone: string | null;
 }
 
 export interface Booking {
@@ -100,6 +104,10 @@ export interface Booking {
   /** The vehicle and driver assigned when staff confirmed (kept on a cancelled booking as a record). */
   vehicle: { id: string; model: string; plateNumber: string } | null;
   driver: { id: string; fullName: string; phone: string } | null;
+  /** False for an overbooked request or a partner-car trip: it doesn't count against the fleet (FT-11). */
+  holdsFleetCar: boolean;
+  /** Set when the trip is confirmed with a partner (outsourced) car instead of a fleet car. */
+  partner: { vehicle: string; driverName: string; driverPhone: string | null } | null;
   salutation: string;
   passengerName: string;
   bookerName: string | null;
@@ -127,6 +135,35 @@ export interface Booking {
 export interface AssignmentOptions {
   vehicles: { id: string; model: string; plateNumber: string; usualDriverId: string | null }[];
   drivers: { id: string; fullName: string }[];
+}
+
+/** Who does a confirmed trip: a fleet vehicle and driver, or a partner car (FT-11). */
+export type Assignment =
+  | { vehicleId: string; driverId: string }
+  | { partner: { vehicle: string; driverName: string; driverPhone?: string | null } };
+
+/** The ids a booking was priced with, to price it again at another time. */
+export interface QuoteInputs {
+  vehicleClassId: string;
+  airportId: string;
+  serviceRegionId: string;
+  vehicleTypeId: string;
+  paymentMethodId: string;
+  addOns: { addOnId: string; quantity: number }[];
+  createdAt: Date;
+}
+
+/** A booking's new time and what goes with it (FT-10). */
+export interface Reschedule {
+  pickupAt: Date;
+  holdUntil: Date;
+  bufferMinutes: number;
+  vehicleId: string | null;
+  driverId: string | null;
+  totalJpy: number;
+  priceLines: QuoteLine[];
+  quoteRequired: boolean;
+  finalTotalJpy: number | null;
 }
 
 export interface NewBooking {
@@ -157,12 +194,15 @@ const LOCK_CLASS = `SELECT pg_advisory_xact_lock(hashtext('booking-hold:' || $1:
 // requested window [$2, $3), counting bookings of that class that aren't cancelled. Counting every
 // overlapping booking would be too strict: two bookings one after the other need only one car.
 // The busiest moment is always the window's start or the start of one of the overlapping holds.
+// Overbooked requests and partner-car trips hold no fleet car. $4 (optional) is a booking to leave
+// out: the one being moved to another time.
 const COUNT_FLEET_AND_HELD = `
   WITH overlapping AS (
     SELECT pickup_at, hold_until
     FROM bookings
-    WHERE vehicle_class_id = $1 AND status IN ('new', 'confirmed')
+    WHERE vehicle_class_id = $1 AND status IN ('new', 'confirmed') AND holds_fleet_car
       AND pickup_at < $3 AND hold_until > $2
+      AND ($4::uuid IS NULL OR id <> $4::uuid)
   ), moments AS (
     SELECT $2::timestamptz AS at
     UNION
@@ -217,7 +257,8 @@ const SELECT_BOOKINGS = `
          b.times_used, b.additional_requests, b.pet_info, b.terms_version, b.terms_accepted_at,
          b.confirmed_at, b.cancelled_at, b.created_at,
          v.id AS vehicle_id, v.model AS vehicle_model, v.plate_number AS vehicle_plate_number,
-         d.id AS driver_id, d.full_name AS driver_full_name, d.phone AS driver_phone
+         d.id AS driver_id, d.full_name AS driver_full_name, d.phone AS driver_phone,
+         b.holds_fleet_car, b.partner_vehicle, b.partner_driver, b.partner_phone
   FROM bookings b
   JOIN airports a ON a.id = b.airport_id
   JOIN service_regions r ON r.id = b.service_region_id
@@ -245,24 +286,42 @@ const FIND_HOLD_WINDOW = `
   FROM bookings
   WHERE id = $1`;
 
+// $2 = false when it is overbooked: moved to bookings without a fleet car free.
 const PROMOTE_BOOKING = `
   UPDATE bookings
-  SET status = 'new'
+  SET status = 'new', holds_fleet_car = $2
   WHERE id = $1 AND status = 'waitlisted'`;
+
+// What PricingService needs to price the booking again at another time.
+const FIND_QUOTE_INPUTS = `
+  SELECT vehicle_class_id, airport_id, service_region_id, vehicle_type_id, payment_method_id, add_ons, created_at
+  FROM bookings
+  WHERE id = $1`;
+
+// Moves a booking to another time. Guarded by its status, like confirm and cancel. The no-overlap
+// constraints refuse a vehicle or driver that is busy at the new time.
+const RESCHEDULE_BOOKING = `
+  UPDATE bookings
+  SET pickup_at = $3, hold_until = $4, buffer_minutes = $5, vehicle_id = $6, driver_id = $7,
+      total_jpy = $8, price_lines = $9::jsonb, quote_required = $10, final_total_jpy = $11
+  WHERE id = $1 AND status = $2::booking_status`;
 
 const FIND_BOOKING = `${SELECT_BOOKINGS}
   WHERE b.id = $1`;
 
 // Both transitions are guarded by the current status, so a double click or two staff acting at once
 // can't confirm a cancelled booking or the reverse.
+// Either a fleet vehicle and driver ($3, $4), or a partner car ($5–$7). A partner trip holds no fleet car.
 const CONFIRM_BOOKING = `
   UPDATE bookings
-  SET status = 'confirmed', confirmed_at = now(), final_total_jpy = $2, vehicle_id = $3, driver_id = $4
+  SET status = 'confirmed', confirmed_at = now(), final_total_jpy = $2, vehicle_id = $3, driver_id = $4,
+      partner_vehicle = $5, partner_driver = $6, partner_phone = $7, holds_fleet_car = ($3::uuid IS NOT NULL)
   WHERE id = $1 AND status = 'new'`;
 
 // Who can take booking $1: Available vehicles of its class, and active drivers, that have no other
-// confirmed booking overlapping its time. usual_driver_id is the driver who normally drives the
-// vehicle (Driver Management), offered as the default.
+// confirmed booking overlapping its time: the booking's own window, or [$2, $3) when checking a new
+// time for it. usual_driver_id is the driver who normally drives the vehicle (Driver Management),
+// offered as the default.
 const LIST_FREE_VEHICLES = `
   SELECT v.id, v.model, v.plate_number, usual.id AS usual_driver_id
   FROM bookings b
@@ -272,7 +331,8 @@ const LIST_FREE_VEHICLES = `
     AND NOT EXISTS (
       SELECT 1 FROM bookings o
       WHERE o.vehicle_id = v.id AND o.status = 'confirmed' AND o.id <> b.id
-        AND o.pickup_at < b.hold_until AND o.hold_until > b.pickup_at)
+        AND o.pickup_at < COALESCE($3::timestamptz, b.hold_until)
+        AND o.hold_until > COALESCE($2::timestamptz, b.pickup_at))
   ORDER BY v.model, v.plate_number`;
 
 const LIST_FREE_DRIVERS = `
@@ -283,7 +343,8 @@ const LIST_FREE_DRIVERS = `
     AND NOT EXISTS (
       SELECT 1 FROM bookings o
       WHERE o.driver_id = d.id AND o.status = 'confirmed' AND o.id <> b.id
-        AND o.pickup_at < b.hold_until AND o.hold_until > b.pickup_at)
+        AND o.pickup_at < COALESCE($3::timestamptz, b.hold_until)
+        AND o.hold_until > COALESCE($2::timestamptz, b.pickup_at))
   ORDER BY d.full_name`;
 
 const CANCEL_BOOKING = `
@@ -323,6 +384,11 @@ function toBooking(row: BookingRow): Booking {
       row.driver_id === null
         ? null
         : { id: row.driver_id, fullName: row.driver_full_name ?? '', phone: row.driver_phone ?? '' },
+    holdsFleetCar: row.holds_fleet_car,
+    partner:
+      row.partner_vehicle === null
+        ? null
+        : { vehicle: row.partner_vehicle, driverName: row.partner_driver ?? '', driverPhone: row.partner_phone },
     salutation: row.salutation,
     passengerName: row.passenger_name,
     bookerName: row.booker_name,
@@ -366,17 +432,22 @@ export class BookingsRepository {
     return q.query(LOCK_CLASS, [vehicleClassId]);
   }
 
-  /** Available vehicles of the class, and the most that are held at once during [from, until). */
+  /**
+   * Available vehicles of the class, and the most that are held at once during [from, until).
+   * `excludeId` leaves one booking out: the one being moved to that time.
+   */
   async countFleetAndHeld(
     q: Queryable,
     vehicleClassId: string,
     from: Date,
     until: Date,
+    excludeId: string | null = null,
   ): Promise<{ fleet: number; held: number }> {
     const { rows } = await q.query<{ fleet: number; held: number }>(COUNT_FLEET_AND_HELD, [
       vehicleClassId,
       from,
       until,
+      excludeId,
     ]);
     return rows[0];
   }
@@ -453,20 +524,70 @@ export class BookingsRepository {
     return row ? { vehicleClassId: row.vehicle_class_id, pickupAt: row.pickup_at, holdUntil: row.hold_until } : null;
   }
 
-  /** waitlisted → new. False when the booking is no longer waitlisted. */
-  async promote(q: Queryable, id: string): Promise<boolean> {
-    const { rowCount } = await q.query(PROMOTE_BOOKING, [id]);
+  /** waitlisted → new; `holdsFleetCar` false when overbooked. False when it is no longer waitlisted. */
+  async promote(q: Queryable, id: string, holdsFleetCar: boolean): Promise<boolean> {
+    const { rowCount } = await q.query(PROMOTE_BOOKING, [id, holdsFleetCar]);
     return rowCount === 1;
   }
 
-  /** Vehicles and drivers that are free for this booking's time. */
-  async listAssignmentOptions(id: string): Promise<AssignmentOptions> {
+  async findQuoteInputs(id: string): Promise<QuoteInputs | null> {
+    const { rows } = await this.db.query<{
+      vehicle_class_id: string;
+      airport_id: string;
+      service_region_id: string;
+      vehicle_type_id: string;
+      payment_method_id: string;
+      add_ons: BookedAddOn[];
+      created_at: Date;
+    }>(FIND_QUOTE_INPUTS, [id]);
+    const row = rows[0];
+    return row
+      ? {
+          vehicleClassId: row.vehicle_class_id,
+          airportId: row.airport_id,
+          serviceRegionId: row.service_region_id,
+          vehicleTypeId: row.vehicle_type_id,
+          paymentMethodId: row.payment_method_id,
+          addOns: row.add_ons.map((a) => ({ addOnId: a.addOnId, quantity: a.quantity })),
+          createdAt: row.created_at,
+        }
+      : null;
+  }
+
+  /**
+   * Saves a booking's new time (and vehicle, driver and price). False when its status changed in the
+   * meantime. Throws a Postgres exclusion violation if the vehicle or driver is busy at the new time.
+   */
+  async reschedule(q: Queryable, id: string, expectedStatus: 'new' | 'confirmed', change: Reschedule): Promise<boolean> {
+    const { rowCount } = await q.query(RESCHEDULE_BOOKING, [
+      id,
+      expectedStatus,
+      change.pickupAt,
+      change.holdUntil,
+      change.bufferMinutes,
+      change.vehicleId,
+      change.driverId,
+      change.totalJpy,
+      JSON.stringify(change.priceLines),
+      change.quoteRequired,
+      change.finalTotalJpy,
+    ]);
+    return rowCount === 1;
+  }
+
+  /** Vehicles and drivers that are free for this booking's time, or for [window.from, window.until). */
+  async listAssignmentOptions(
+    id: string,
+    window: { from: Date; until: Date } | null = null,
+    q: Queryable = this.db,
+  ): Promise<AssignmentOptions> {
+    const params = [id, window?.from ?? null, window?.until ?? null];
     const [vehicles, drivers] = await Promise.all([
-      this.db.query<{ id: string; model: string; plate_number: string; usual_driver_id: string | null }>(
+      q.query<{ id: string; model: string; plate_number: string; usual_driver_id: string | null }>(
         LIST_FREE_VEHICLES,
-        [id],
+        params,
       ),
-      this.db.query<{ id: string; full_name: string }>(LIST_FREE_DRIVERS, [id]),
+      q.query<{ id: string; full_name: string }>(LIST_FREE_DRIVERS, params),
     ]);
     return {
       vehicles: vehicles.rows.map((row) => ({
@@ -483,8 +604,17 @@ export class BookingsRepository {
    * False when the booking is no longer 'new'. Throws a Postgres exclusion violation if the vehicle
    * or driver was given to an overlapping booking in the meantime.
    */
-  async confirm(id: string, finalTotalJpy: number, vehicleId: string, driverId: string): Promise<boolean> {
-    const { rowCount } = await this.db.query(CONFIRM_BOOKING, [id, finalTotalJpy, vehicleId, driverId]);
+  async confirm(q: Queryable, id: string, finalTotalJpy: number, assignment: Assignment): Promise<boolean> {
+    const fleet = 'vehicleId' in assignment;
+    const { rowCount } = await q.query(CONFIRM_BOOKING, [
+      id,
+      finalTotalJpy,
+      fleet ? assignment.vehicleId : null,
+      fleet ? assignment.driverId : null,
+      fleet ? null : assignment.partner.vehicle,
+      fleet ? null : assignment.partner.driverName,
+      fleet ? null : (assignment.partner.driverPhone ?? null),
+    ]);
     return rowCount === 1;
   }
 

@@ -147,13 +147,24 @@ function BookingCard({ hovered }: { hovered: Hovered }) {
         <dd>
           {booking.vehicle
             ? `${booking.vehicle.model} · ${booking.vehicle.plateNumber}`
-            : `${booking.vehicleLabel} (not assigned yet)`}
+            : booking.partner
+              ? `Partner: ${booking.partner.vehicle}`
+              : `${booking.vehicleLabel} (not assigned yet)`}
         </dd>
         {booking.driver && (
           <>
             <dt>Driver</dt>
             <dd>
               {booking.driver.fullName} · {booking.driver.phone}
+            </dd>
+          </>
+        )}
+        {booking.partner && (
+          <>
+            <dt>Driver</dt>
+            <dd>
+              {booking.partner.driverName}
+              {booking.partner.driverPhone ? ` · ${booking.partner.driverPhone}` : ""} (partner)
             </dd>
           </>
         )}
@@ -435,8 +446,20 @@ export default function AvailabilityCalendar({ title, description, canEdit, show
                         {startsEarlier ? "…" : booking.pickupTime}
                         {columns === 1 || startsEarlier ? `–${tripEndTime(booking)}` : ""}
                       </b>
-                      <span>{booking.vehicle ? booking.vehicle.plateNumber : booking.vehicleClassName}</span>
-                      <span>{booking.driver ? booking.driver.fullName : "Not assigned"}</span>
+                      <span>
+                        {booking.vehicle
+                          ? booking.vehicle.plateNumber
+                          : booking.partner
+                            ? "Partner car"
+                            : booking.vehicleClassName}
+                      </span>
+                      <span>
+                        {booking.driver
+                          ? booking.driver.fullName
+                          : booking.partner
+                            ? booking.partner.driverName
+                            : "Not assigned"}
+                      </span>
                       {bufferShare > 0 && (
                         <i className={styles.calBuffer} style={{ height: `${bufferShare * 100}%` }} aria-hidden="true" />
                       )}
