@@ -10,7 +10,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=384"
 COPY package*.json ./
-RUN npm ci --omit=dev && npm install --no-save node-pg-migrate
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/database ./database
 EXPOSE 4000
