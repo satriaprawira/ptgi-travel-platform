@@ -58,23 +58,21 @@ jobs:
             set -e
             cd /opt/ptgi
 
-            PREV_SHA=$(git rev-parse HEAD)
             git fetch origin main
             git reset --hard origin/main
-            NEW_SHA=$(git rev-parse HEAD)
 
-            CHANGED_FILES=$(git diff --name-only "$PREV_SHA" "$NEW_SHA" || echo "all")
-            echo "Changed files between $PREV_SHA and $NEW_SHA:"
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "all")
+            echo "Changed files in latest commit:"
             echo "$CHANGED_FILES"
 
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$PREV_SHA" = "$NEW_SHA" ] || echo "$CHANGED_FILES" | grep -qE '^(apps/api/|docker-compose\.prod\.yml)'; then
+            if echo "$CHANGED_FILES" | grep -qE '^(apps/api/|docker-compose\.prod\.yml)'; then
               echo "Building api container..."
               docker compose -f docker-compose.prod.yml build api
             else
               echo "No changes in apps/api — skipping api rebuild."
             fi
 
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$PREV_SHA" = "$NEW_SHA" ] || echo "$CHANGED_FILES" | grep -qE '^(apps/web/|docker-compose\.prod\.yml)'; then
+            if echo "$CHANGED_FILES" | grep -qE '^(apps/web/|docker-compose\.prod\.yml)'; then
               echo "Building web container..."
               docker compose -f docker-compose.prod.yml build web
             else
