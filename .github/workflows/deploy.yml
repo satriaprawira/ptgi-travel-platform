@@ -1,0 +1,96 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify API & Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/api/package-lock.json
+            apps/web/package-lock.json
+
+      - name: Install, test, and build API
+        working-directory: apps/api
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Install and lint Web
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run lint
+
+  deploy:
+    name: Deploy to Tencent Server
+    needs: verify
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /opt/ptgi
+
+            PREV_SHA=$(git rev-parse HEAD)
+            git fetch origin main
+            git reset --hard origin/main
+            NEW_SHA=$(git rev-parse HEAD)
+
+            CHANGED_FILES=$(git diff --name-only "$PREV_SHA" "$NEW_SHA" || echo "all")
+            echo "Changed files between $PREV_SHA and $NEW_SHA:"
+            echo "$CHANGED_FILES"
+
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$PREV_SHA" = "$NEW_SHA" ] || echo "$CHANGED_FILES" | grep -qE '^(apps/api/|docker-compose\.prod\.yml)'; then
+              echo "Building api container..."
+              docker compose -f docker-compose.prod.yml build api
+            else
+              echo "No changes in apps/api — skipping api rebuild."
+            fi
+
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$PREV_SHA" = "$NEW_SHA" ] || echo "$CHANGED_FILES" | grep -qE '^(apps/web/|docker-compose\.prod\.yml)'; then
+              echo "Building web container..."
+              docker compose -f docker-compose.prod.yml build web
+            else
+              echo "No changes in apps/web — skipping web rebuild."
+            fi
+
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "Waiting for API health check..."
+            for i in 1 2 3 4 5 6; do
+              if curl -fsS http://localhost/v1/health; then
+                echo ""
+                echo "Health check passed!"
+                break
+              fi
+              sleep 3
+            done
+
+            docker image prune -f

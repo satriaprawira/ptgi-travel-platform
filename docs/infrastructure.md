@@ -64,8 +64,23 @@ Because Next.js embeds `NEXT_PUBLIC_API_URL` into the client bundle at **build t
    ```
 
 ### 3.3 Deploying Code Changes or `nginx.conf` Updates
-When new commits are merged to `main`:
+Code changes merged to `main` are deployed **automatically** by GitHub Actions ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)):
+1. **`verify` job:** Runs `apps/api` unit tests (`npm test`) and build check (`npm run build`), plus `apps/web` lint check (`npm run lint`).
+2. **`deploy` job:** Connects to `/opt/ptgi` via SSH, pulls `origin/main`, rebuilds only the containers whose files changed (`api` and/or `web`), restarts the stack (`docker compose -f docker-compose.prod.yml up -d --remove-orphans`), verifies `http://localhost/v1/health`, and prunes dangling images.
 
+#### Required GitHub Actions Secrets (`Settings → Secrets and variables → Actions`)
+| Secret Name | Value | Description |
+| :--- | :--- | :--- |
+| `SERVER_HOST` | `129.226.95.102` | Public IP of the Tencent Lighthouse server |
+| `SERVER_USER` | `rai` | SSH login user on the server |
+| `SERVER_SSH_KEY` | `-----BEGIN OPENSSH PRIVATE KEY-----...` | Private SSH key authorized in `~/.ssh/authorized_keys` on the server |
+
+To authorize the server's existing key and print the private key for `SERVER_SSH_KEY`:
+```bash
+cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && cat ~/.ssh/id_ed25519
+```
+
+For manual deployment on the server (if ever needed):
 ```bash
 cd /opt/ptgi && git pull origin main && docker compose -f docker-compose.prod.yml build api && docker compose -f docker-compose.prod.yml build web && docker compose -f docker-compose.prod.yml up -d && docker image prune -f
 ```
