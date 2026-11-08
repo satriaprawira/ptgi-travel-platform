@@ -10,6 +10,22 @@
   --indigo-soft: #EAF0F8;
   --line: #E1E5EC;
   --radius: 14px;
+
+  /* Customer site header and footer (docs/header.png, docs/footer.png) */
+  --site-dark: #232427;
+  --site-yellow: #FFDE75;
+  --site-gold: #F3D37C;
+  --site-heading-yellow: #F5C84C;
+  --site-nav-ink: #4B4C50;
+  --site-nav-ink-strong: #111214;
+  --site-muted: #C9C9C4;
+  /* Height of the sticky yellow menu bar; sticky content and scroll targets sit below it. */
+  --site-nav-height: 62px;
+}
+@media (max-width: 900px) {
+  :root {
+    --site-nav-height: 52px;
+  }
 }
 
 * {
@@ -17,6 +33,7 @@
 }
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: var(--site-nav-height);
 }
 body {
   margin: 0;
@@ -30,56 +47,11 @@ a {
   color: inherit;
 }
 
-/* ---------- Top bar ---------- */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 28px 32px 12px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-display), sans-serif;
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: 0.01em;
-}
-.brand svg {
-  flex: none;
-}
-.brand .sub {
-  display: block;
-  font-family: var(--font-body), sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--ink-soft);
-  letter-spacing: 0;
-  margin-top: 2px;
-}
-.help-link {
-  font-size: 13px;
-  color: var(--ink-soft);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.help-link:hover {
-  color: var(--indigo);
-  border-color: var(--indigo);
-}
-
 /* ---------- Hero ---------- */
 .hero {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 20px 32px 8px;
+  padding: 40px 32px 8px;
 }
 .hero h1 {
   font-family: var(--font-display), sans-serif;
@@ -777,7 +749,7 @@ select {
 /* ---------- Ticket (signature element) ---------- */
 .ticket-col {
   position: sticky;
-  top: 28px;
+  top: calc(var(--site-nav-height) + 28px);
 }
 .ticket {
   position: relative;
@@ -990,7 +962,6 @@ select {
   }
 }
 @media (max-width: 560px) {
-  .topbar,
   .hero,
   .layout {
     padding-left: 20px;

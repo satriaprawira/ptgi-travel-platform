@@ -1,7 +1,5 @@
 import ReservationForm from "@/components/ReservationForm";
-import WhatsAppButton from "@/components/WhatsAppButton";
 import { getReservationOptions, type ReservationOptions } from "@/lib/api/reservation";
-import { WHATSAPP_URL } from "@/lib/content";
 
 // Rendered per request, not at build time: vehicle types, prices and add-ons come from the API and
 // staff can change them any time. It also keeps `next build` from depending on the API being up.
@@ -17,30 +15,6 @@ export default async function ReservationFormPage() {
 
   return (
     <>
-      <header className="topbar">
-        <div className="brand">
-          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-             <image href="/logo/goal-intl-logo.png" width="60" height="60"/>
-          </svg>
-          <div>
-            Goal International Co., Ltd
-            <span className="sub">Private airport pickups across Japan</span>
-          </div>
-        </div>
-        <a className="help-link" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M12 18h.01M8 9a4 4 0 118 0c0 2-2 2.5-3 3.5-.6.6-1 1.2-1 2"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Need help? Chat with us
-        </a>
-      </header>
-
       <div className="hero">
         <h1>Reserve your airport pickup</h1>
         <p>
@@ -62,7 +36,6 @@ export default async function ReservationFormPage() {
           </p>
         </div>
       )}
-      <WhatsAppButton />
     </>
   );
 }

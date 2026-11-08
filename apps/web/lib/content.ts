@@ -1,5 +1,6 @@
 // Customer-facing texts supplied by Goal International (Phase 1 feedback FT-1, FT-2, FT-5, FT-8).
-// Wording changes happen here only; the reservation form, its pop-ups and the T&C box all read from it.
+// Wording changes happen here only; the reservation form, its pop-ups, the T&C box and the site header and
+// footer all read from it.
 
 export interface PolicySection {
   title: string;
@@ -147,3 +148,63 @@ export const ESTIMATE_NOTE =
 export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || "817032580333";
 const WHATSAPP_GREETING = "Hello Goal International, I'd like to ask about a reservation.";
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_GREETING)}`;
+
+// ---------- Site header and footer (docs/header.png, docs/footer.png) ----------
+
+export const COMPANY_NAME = "Goal International Co., Ltd";
+
+/** The yellow menu bar, in order. Pages without content yet show "Coming soon". */
+export const SITE_NAV = [
+  { label: "Home", href: "/" },
+  { label: "Services", href: "/services" },
+  { label: "About", href: "/about" },
+  { label: "How to Book", href: "/how-to-book" },
+  { label: "Fare and Policy", href: "/fare-and-policy" },
+  { label: "Quotation", href: "/reservation-form" },
+  { label: "Contact", href: "/contact" },
+] as const;
+
+export interface Office {
+  name: string;
+  company?: string;
+  address: string;
+  /** Part of the address shown in bold, as in the design. */
+  emphasis?: string;
+}
+
+/** Office addresses exactly as written in the footer design. */
+export const OFFICES = {
+  head: { name: "Head Office", address: "Kugahara 3-13-4 Ota City Tokyo" },
+  osaka: {
+    name: "Osaka Branch",
+    address: "〒592-0002 Osaka, Takaishi, Hagoromo, 1-chōme−11−9 グリーンガーデン羽衣",
+    emphasis: "Osaka, Takaishi, Hagoromo",
+  },
+  narita: { name: "Narita Branch", address: "Chiba, Narita City, Kawakami 245-249" },
+  indonesia: {
+    name: "Indonesia Branch",
+    company: "PT. JALAN-JALAN TOURS AND TRAVEL",
+    address:
+      "Gedung gajah Jl. Dr. Saharjo No.111 Blk an, RT.1/RW.1, Tebet Bar., Kec. Tebet, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12810",
+  },
+} satisfies Record<string, Office>;
+
+export const CONTACT = {
+  /** The WhatsApp number as shown; the link itself opens WHATSAPP_URL. */
+  chat: "+81 70 3258 0333",
+  fax: "+81 03 6410 4156",
+  emails: ["info@pickupairport.online", "info@jalanjalantravel.co"],
+};
+
+export const SUPPORT_NOTE = "We are available 24/7 via our website chat and email.";
+/** Footer line linking to the WhatsApp chat (the design's "Live Chat"). */
+export const LIVE_CHAT_NOTE = "For a quick response, please use the Live Chat";
+
+export const SOCIAL_LINKS = [
+  { name: "Instagram", href: "https://www.instagram.com/gi_japantaxi" },
+  { name: "Facebook", href: "https://www.facebook.com/goal.int.coltd" },
+  { name: "Threads", href: "https://www.threads.com/@gi_japantaxi" },
+  { name: "WhatsApp", href: WHATSAPP_URL },
+] as const;
+
+export const COPYRIGHT = "© 2023 by Goal International";
