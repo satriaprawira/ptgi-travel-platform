@@ -80,13 +80,18 @@ jobs:
             fi
 
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml restart nginx
 
             echo "Waiting for API health check..."
-            for i in 1 2 3 4 5 6; do
+            for i in 1 2 3 4 5 6 7 8 9 10; do
               if curl -fsS http://localhost/v1/health; then
                 echo ""
                 echo "Health check passed!"
                 break
+              fi
+              if [ "$i" -eq 10 ]; then
+                echo "Health check failed after 10 attempts"
+                exit 1
               fi
               sleep 3
             done
