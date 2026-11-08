@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,6 +15,8 @@ import { AdminAuthGuard } from '../common/guards/admin-auth.guard.js';
 import { BookingsService } from './bookings.service.js';
 import { ConfirmBookingDto } from './dto/confirm-booking.dto.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
+import { PromoteBookingDto } from './dto/promote-booking.dto.js';
+import { RescheduleBookingDto, ReschedulePreviewQueryDto } from './dto/reschedule-booking.dto.js';
 import { ScheduleQueryDto } from './dto/schedule-query.dto.js';
 
 /** Public: the reservation form's "Confirm reservation". */
@@ -59,6 +62,18 @@ export class AdminBookingsController {
     return this.bookings.assignmentOptions(id);
   }
 
+  /** Before moving a booking: is the new time free, which cars and drivers are, and what would it cost. */
+  @Get(':id/reschedule-preview')
+  reschedulePreview(@Param('id', ParseUUIDPipe) id: string, @Query() query: ReschedulePreviewQueryDto) {
+    return this.bookings.reschedulePreview(id, query);
+  }
+
+  /** Moves a new or confirmed booking to another time (and vehicle, driver, price). */
+  @Patch(':id')
+  reschedule(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RescheduleBookingDto) {
+    return this.bookings.reschedule(id, dto);
+  }
+
   @Post(':id/confirm')
   @HttpCode(HttpStatus.OK)
   confirm(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ConfirmBookingDto) {
@@ -67,8 +82,8 @@ export class AdminBookingsController {
 
   @Post(':id/promote')
   @HttpCode(HttpStatus.OK)
-  promote(@Param('id', ParseUUIDPipe) id: string) {
-    return this.bookings.promote(id);
+  promote(@Param('id', ParseUUIDPipe) id: string, @Body() dto: PromoteBookingDto) {
+    return this.bookings.promote(id, dto.overbook ?? false);
   }
 
   @Post(':id/cancel')
