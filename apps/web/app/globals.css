@@ -395,6 +395,62 @@ a {
   color: var(--accent);
 }
 
+/* ---------- Pick-up / drop-off with the swap button (FT-4) ---------- */
+.route-box {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.route-leg {
+  display: grid;
+  gap: 10px;
+}
+.route-leg-title {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.route-swap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+.route-swap::before,
+.route-swap::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--line);
+}
+.swap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13px var(--font-body), sans-serif;
+  color: var(--indigo);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.swap-btn span {
+  font-size: 16px;
+  line-height: 1;
+}
+.swap-btn:hover {
+  border-color: var(--indigo);
+}
+.swap-btn:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
 /* ---------- Floating WhatsApp button (customer pages) ---------- */
 .whatsapp-float {
   position: fixed;

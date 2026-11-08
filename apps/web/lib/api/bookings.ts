@@ -1,15 +1,31 @@
 import { apiRequest } from "./client";
-import type { QuoteLine, QuoteRequest } from "./reservation";
+import type { QuoteLine } from "./reservation";
 
 // Mirrors apps/api/src/bookings: POST /v1/bookings (public) and /v1/admin/bookings (staff).
 
 /** new: holds a car, awaiting staff. confirmed: vehicle and driver assigned. waitlisted: no car was free. */
 export type BookingStatus = "new" | "confirmed" | "waitlisted" | "cancelled";
 export type TripDirection = "from_airport" | "to_airport";
+/** airport: a transfer from or to Haneda / Narita. other: a car rental for any trip (FT-4). */
+export type TripType = "airport" | "other";
 
-/** What the reservation form submits: the priced trip plus who is travelling. */
-export interface BookingRequest extends QuoteRequest {
-  direction: TripDirection;
+/** What the reservation form submits: the trip plus who is travelling. */
+export interface BookingRequest {
+  tripType: TripType;
+  /** Airport trips only. */
+  airportId?: string;
+  serviceRegionId?: string;
+  vehicleTypeId?: string;
+  direction?: TripDirection;
+  /** Other trips (car rental) only. */
+  vehicleClassId?: string;
+  dropoffAddress?: string;
+  rentalHours?: number;
+  paymentMethodId: string;
+  pickupDate: string;
+  pickupTime: string;
+  addOns: { addOnId: string; quantity: number }[];
+  /** Airport trips: the drop-off or pick-up address on the city side. Car rentals: the pick-up address. */
   address: string;
   /** Arrival (from the airport) or departure (to the airport) terminal, e.g. "Terminal 3". */
   terminal: string | null;
@@ -56,12 +72,18 @@ export interface AdminBooking {
   id: string;
   reference: string;
   status: BookingStatus;
-  direction: TripDirection;
-  airport: { code: string; name: string };
-  regionName: string;
+  tripType: TripType;
+  /** Airport trips only (null for car rentals). */
+  direction: TripDirection | null;
+  airport: { code: string; name: string } | null;
+  regionName: string | null;
   /** The fleet type the booking needs, e.g. "Grand Cabin". */
   vehicleClassName: string;
+  /** Airport trips: the city-side address. Car rentals: the pick-up address. */
   address: string;
+  /** Car rentals only. */
+  dropoffAddress: string | null;
+  rentalHours: number | null;
   /** Start and end of the time the vehicle is needed (ISO timestamps). holdUntil includes the buffer. */
   pickupAt: string;
   holdUntil: string;

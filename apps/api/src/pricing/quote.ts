@@ -4,10 +4,11 @@
  *
  * price = base fare + vehicle surcharge + pickup-time surcharge + last-minute fee + add-ons + payment fee
  * A NULL amount ("will be adjusted" / "please inquire") makes the whole quote "quote required".
+ * A car rental (FT-4, "Others" trips) is always quoted by staff; only its extras are priced here.
  */
 
 export interface QuoteLine {
-  code: 'base-fare' | 'vehicle' | 'pickup-time' | 'lead-time' | 'add-on' | 'payment';
+  code: 'base-fare' | 'vehicle' | 'pickup-time' | 'lead-time' | 'add-on' | 'payment' | 'rental';
   label: string;
   /** null = staff will quote this part. */
   amountJpy: number | null;
@@ -33,6 +34,14 @@ export interface QuoteInput {
   timeSurcharges: { label: string; startsAt: string; endsAt: string; amountJpy: number }[];
   leadTimeSurcharges: { label: string; withinHours: number; amountJpy: number }[];
   addOns: { label: string; priceJpy: number; freeQuantity: number; quantity: number }[];
+}
+
+export interface RentalQuoteInput {
+  /** The car category, e.g. "Alphard 4.0". */
+  vehicleName: string;
+  hours: number;
+  payment: QuoteInput['payment'];
+  addOns: QuoteInput['addOns'];
 }
 
 /** Minutes since midnight for "HH:MM" or "HH:MM:SS". */
@@ -94,7 +103,32 @@ export function calculateQuote(input: QuoteInput): Quote {
     lines.push({ code: 'lead-time', label: leadTime.label, amountJpy: leadTime.amountJpy });
   }
 
-  for (const addOn of input.addOns) {
+  lines.push(...addOnLines(input.addOns), ...paymentLines(input.payment));
+
+  return withTotal(lines);
+}
+
+/**
+ * A car rental for an "Others" trip: the rental itself is quoted by staff, so the quote is always
+ * "quote required"; extras and the payment fee are priced as for an airport transfer.
+ */
+export function calculateRentalQuote(input: RentalQuoteInput): Quote {
+  const lines: QuoteLine[] = [
+    {
+      code: 'rental',
+      label: `Car rental · ${input.vehicleName} · ${input.hours} ${input.hours === 1 ? 'hour' : 'hours'}`,
+      amountJpy: null,
+    },
+    ...addOnLines(input.addOns),
+    ...paymentLines(input.payment),
+  ];
+  return withTotal(lines);
+}
+
+/** First free (freeQuantity), then priceJpy each: "Baby seat × 2 (1 included)". */
+function addOnLines(addOns: QuoteInput['addOns']): QuoteLine[] {
+  const lines: QuoteLine[] = [];
+  for (const addOn of addOns) {
     if (addOn.quantity <= 0) continue;
     const charged = Math.max(addOn.quantity - addOn.freeQuantity, 0);
     const free = addOn.quantity - charged;
@@ -106,14 +140,16 @@ export function calculateQuote(input: QuoteInput): Quote {
         : ` × ${addOn.quantity}${free > 0 ? ` (${free} included)` : ''}`;
     lines.push({ code: 'add-on', label: `${addOn.label}${detail}`, amountJpy: charged * addOn.priceJpy });
   }
+  return lines;
+}
 
-  if (input.payment.feeJpy > 0) {
-    lines.push({ code: 'payment', label: `${input.payment.label} fee`, amountJpy: input.payment.feeJpy });
-  }
+function paymentLines(payment: QuoteInput['payment']): QuoteLine[] {
+  return payment.feeJpy > 0 ? [{ code: 'payment', label: `${payment.label} fee`, amountJpy: payment.feeJpy }] : [];
+}
 
+function withTotal(lines: QuoteLine[]): Quote {
   const quoteRequired = lines.some((line) => line.amountJpy === null);
   const totalJpy = lines.reduce((sum, line) => sum + (line.amountJpy ?? line.minAmountJpy ?? 0), 0);
-
   return { currency: 'JPY', lines, totalJpy, quoteRequired };
 }
 

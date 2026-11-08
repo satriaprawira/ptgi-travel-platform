@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { calculateQuote, isInTimeWindow, tokyoInstant, windowText, type QuoteInput } from './quote.js';
+import {
+  calculateQuote,
+  calculateRentalQuote,
+  isInTimeWindow,
+  tokyoInstant,
+  windowText,
+  type QuoteInput,
+  type RentalQuoteInput,
+} from './quote.js';
 
 // Seed data from the staff price sheets (database/migrations/*seed-pricing.sql).
 const TIME_SURCHARGES = [
@@ -150,5 +158,40 @@ describe('tokyoInstant', () => {
     ['01-10-2026', '10:00'],
   ])('rejects %s %s', (date, time) => {
     expect(tokyoInstant(date, time)).toBeNull();
+  });
+});
+
+describe('calculateRentalQuote (FT-4, "Others" trips)', () => {
+  const rental = (overrides: Partial<RentalQuoteInput> = {}) =>
+    calculateRentalQuote({
+      vehicleName: 'Alphard 4.0',
+      hours: 4,
+      payment: { label: 'Credit card', feeJpy: 0 },
+      addOns: [],
+      ...overrides,
+    });
+
+  it('is always quoted by staff: the rental line has no amount', () => {
+    const quote = rental();
+    expect(quote.quoteRequired).toBe(true);
+    expect(quote.lines).toEqual([{ code: 'rental', label: 'Car rental · Alphard 4.0 · 4 hours', amountJpy: null }]);
+    expect(quote.totalJpy).toBe(0);
+  });
+
+  it('says "hour" for one hour', () => {
+    expect(rental({ hours: 1 }).lines[0].label).toBe('Car rental · Alphard 4.0 · 1 hour');
+  });
+
+  it('prices extras and the payment fee as for airport trips', () => {
+    const quote = rental({
+      payment: { label: 'Cash on arrival', feeJpy: 1000 },
+      addOns: [{ label: 'Baby seat', priceJpy: 1000, freeQuantity: 1, quantity: 2 }],
+    });
+    expect(quote.lines.slice(1)).toEqual([
+      { code: 'add-on', label: 'Baby seat × 2 (1 included)', amountJpy: 1000 },
+      { code: 'payment', label: 'Cash on arrival fee', amountJpy: 1000 },
+    ]);
+    expect(quote.totalJpy).toBe(2000);
+    expect(quote.quoteRequired).toBe(true);
   });
 });

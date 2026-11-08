@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService, type Queryable } from '../database/database.service.js';
 import type { QuoteLine } from '../pricing/quote.js';
-import type { CreateBookingDto, TripDirection } from './dto/create-booking.dto.js';
+import type { CreateBookingDto, TripDirection, TripType } from './dto/create-booking.dto.js';
 
 /**
  * new: holds a vehicle of its class, waiting for staff. confirmed: a vehicle and driver are assigned.
@@ -19,12 +19,15 @@ interface BookingRow {
   id: string;
   reference: string;
   status: BookingStatus;
-  direction: TripDirection;
-  airport_code: string;
-  airport_name: string;
-  region_name: string;
+  trip_type: TripType;
+  direction: TripDirection | null;
+  airport_code: string | null;
+  airport_name: string | null;
+  region_name: string | null;
   vehicle_class_name: string;
   address: string;
+  dropoff_address: string | null;
+  rental_hours: number | null;
   pickup_at: Date;
   hold_until: Date;
   buffer_minutes: number;
@@ -76,14 +79,21 @@ export interface Booking {
   id: string;
   reference: string;
   status: BookingStatus;
-  direction: TripDirection;
-  airport: { code: string; name: string };
-  regionName: string;
+  /** airport: a transfer from or to an airport. other: a car rental (FT-4). */
+  tripType: TripType;
+  /** Airport trips only (null for car rentals). */
+  direction: TripDirection | null;
+  airport: { code: string; name: string } | null;
+  regionName: string | null;
   /** The fleet type the hold counts against, e.g. "Grand Cabin". */
   vehicleClassName: string;
+  /** Airport trips: the drop-off (from the airport) or pick-up (to the airport) address. Car rentals: the pick-up address. */
   address: string;
+  /** Car rentals only. */
+  dropoffAddress: string | null;
+  rentalHours: number | null;
   pickupAt: Date;
-  /** When the car is free again: pickup + 3 hours + bufferMinutes. */
+  /** When the car is free again: pickup + 3 hours (car rental: rentalHours) + bufferMinutes. */
   holdUntil: Date;
   /** The buffer between bookings this booking was made with (FT-12); the trip itself ends bufferMinutes before holdUntil. */
   bufferMinutes: number;
@@ -142,12 +152,12 @@ export type Assignment =
   | { vehicleId: string; driverId: string }
   | { partner: { vehicle: string; driverName: string; driverPhone?: string | null } };
 
-/** The ids a booking was priced with, to price it again at another time. */
+/** The ids a booking was priced with, to price it again at another time. Airport ids are null for car rentals. */
 export interface QuoteInputs {
   vehicleClassId: string;
-  airportId: string;
-  serviceRegionId: string;
-  vehicleTypeId: string;
+  airportId: string | null;
+  serviceRegionId: string | null;
+  vehicleTypeId: string | null;
   paymentMethodId: string;
   addOns: { addOnId: string; quantity: number }[];
   createdAt: Date;
@@ -168,6 +178,8 @@ export interface Reschedule {
 
 export interface NewBooking {
   dto: CreateBookingDto;
+  /** Car rentals have no vehicle type: they store the car category's name. */
+  vehicleLabel: string | null;
   /** 'new' takes a hold; 'waitlisted' is saved without one. */
   status: 'new' | 'waitlisted';
   vehicleClassId: string;
@@ -185,6 +197,9 @@ const FIND_VEHICLE_CLASS = `
   FROM vehicle_types t
   JOIN vehicle_classes c ON c.id = t.vehicle_class_id
   WHERE t.id = $1`;
+
+const FIND_CLASS = `
+  SELECT id, name FROM vehicle_classes WHERE id = $1`;
 
 // One hold decision per vehicle class at a time: without it, two customers booking the last free
 // car at the same moment would each see it as free. Released at commit or rollback.
@@ -229,22 +244,24 @@ const INSERT_BOOKING = `
     salutation, passenger_name, booker_name, country_origin, passengers, luggage,
     age_adults, age_infants, age_children, email, phone_country_code, phone,
     times_used, additional_requests, pet_info, status,
-    terminal, oversized_luggage, terms_version, terms_accepted_at, buffer_minutes
+    terminal, oversized_luggage, terms_version, terms_accepted_at, buffer_minutes,
+    trip_type, dropoff_address, rental_hours
   ) VALUES (
     'GI-' || to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYMM') || '-'
           || lpad(nextval('booking_reference_seq')::text, 4, '0'),
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, (SELECT label FROM vehicle_types WHERE id = $8), $10, (SELECT label FROM payment_methods WHERE id = $10),
+    $8, $9, COALESCE((SELECT label FROM vehicle_types WHERE id = $8), $35), $10, (SELECT label FROM payment_methods WHERE id = $10),
     $11::jsonb, $12::jsonb, $13, $14,
     $15, $16, $17, $18, $19, $20,
     $21, $22, $23, $24, $25, $26,
     $27, $28, $29, $30::booking_status,
-    $31, $32, $33, now(), $34
+    $31, $32, $33, now(), $34,
+    $36::trip_type, $37, $38
   )
   RETURNING id`;
 
 const SELECT_BOOKINGS = `
-  SELECT b.id, b.reference, b.status, b.direction,
+  SELECT b.id, b.reference, b.status, b.trip_type, b.direction, b.dropoff_address, b.rental_hours,
          a.code AS airport_code, a.name AS airport_name, r.name AS region_name,
          vc.name AS vehicle_class_name,
          b.address, b.pickup_at, b.hold_until, b.buffer_minutes,
@@ -260,8 +277,8 @@ const SELECT_BOOKINGS = `
          d.id AS driver_id, d.full_name AS driver_full_name, d.phone AS driver_phone,
          b.holds_fleet_car, b.partner_vehicle, b.partner_driver, b.partner_phone
   FROM bookings b
-  JOIN airports a ON a.id = b.airport_id
-  JOIN service_regions r ON r.id = b.service_region_id
+  LEFT JOIN airports a ON a.id = b.airport_id
+  LEFT JOIN service_regions r ON r.id = b.service_region_id
   JOIN vehicle_classes vc ON vc.id = b.vehicle_class_id
   LEFT JOIN vehicles v ON v.id = b.vehicle_id
   LEFT JOIN drivers d ON d.id = b.driver_id`;
@@ -357,11 +374,14 @@ function toBooking(row: BookingRow): Booking {
     id: row.id,
     reference: row.reference,
     status: row.status,
+    tripType: row.trip_type,
     direction: row.direction,
-    airport: { code: row.airport_code, name: row.airport_name },
+    airport: row.airport_code === null ? null : { code: row.airport_code, name: row.airport_name ?? '' },
     regionName: row.region_name,
     vehicleClassName: row.vehicle_class_name,
     address: row.address,
+    dropoffAddress: row.dropoff_address,
+    rentalHours: row.rental_hours,
     pickupAt: row.pickup_at,
     holdUntil: row.hold_until,
     bufferMinutes: row.buffer_minutes,
@@ -417,8 +437,14 @@ function toBooking(row: BookingRow): Booking {
 export class BookingsRepository {
   constructor(private readonly db: DatabaseService) {}
 
+  /** The fleet class that serves a vehicle type. */
   async findVehicleClass(vehicleTypeId: string): Promise<{ id: string; name: string } | null> {
     const { rows } = await this.db.query<{ id: string; name: string }>(FIND_VEHICLE_CLASS, [vehicleTypeId]);
+    return rows[0] ?? null;
+  }
+
+  async findClass(vehicleClassId: string): Promise<{ id: string; name: string } | null> {
+    const { rows } = await this.db.query<{ id: string; name: string }>(FIND_CLASS, [vehicleClassId]);
     return rows[0] ?? null;
   }
 
@@ -455,14 +481,14 @@ export class BookingsRepository {
   async insert(q: Queryable, booking: NewBooking): Promise<string> {
     const { dto } = booking;
     const { rows } = await q.query<{ id: string }>(INSERT_BOOKING, [
-      dto.direction,
-      dto.airportId,
-      dto.serviceRegionId,
+      dto.direction ?? null,
+      dto.airportId ?? null,
+      dto.serviceRegionId ?? null,
       dto.address,
       booking.pickupAt,
       booking.holdUntil,
       dto.flightCode ?? null,
-      dto.vehicleTypeId,
+      dto.vehicleTypeId ?? null,
       booking.vehicleClassId,
       dto.paymentMethodId,
       // pg would send a JS array as a Postgres array, so jsonb values go in as JSON text.
@@ -490,6 +516,10 @@ export class BookingsRepository {
       dto.oversizedLuggage ?? null,
       dto.termsVersion,
       booking.bufferMinutes,
+      booking.vehicleLabel,
+      dto.tripType ?? 'airport',
+      dto.dropoffAddress ?? null,
+      dto.rentalHours ?? null,
     ]);
     return rows[0].id;
   }
@@ -533,9 +563,9 @@ export class BookingsRepository {
   async findQuoteInputs(id: string): Promise<QuoteInputs | null> {
     const { rows } = await this.db.query<{
       vehicle_class_id: string;
-      airport_id: string;
-      service_region_id: string;
-      vehicle_type_id: string;
+      airport_id: string | null;
+      service_region_id: string | null;
+      vehicle_type_id: string | null;
       payment_method_id: string;
       add_ons: BookedAddOn[];
       created_at: Date;

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { countryCodes, countrySuggestions } from "@/lib/options";
-import { createBooking, type BookingReceipt } from "@/lib/api/bookings";
+import { createBooking, type BookingReceipt, type BookingRequest, type TripType } from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
-import { paymentLabel, surchargeBadge, yen } from "@/lib/api/format";
-import { requestQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
+import { paymentLabel, placeName, surchargeBadge, yen } from "@/lib/api/format";
+import { requestQuote, requestRentalQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
 import {
   ESTIMATE_NOTE,
   LUGGAGE_GUIDE,
@@ -31,6 +31,9 @@ interface AgeGroups {
 
 export type Direction = "from-airport" | "to-airport";
 
+/** Hours a car can be rented for on an "Others" trip (FT-4). */
+const RENTAL_HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+
 /** Pieces per luggage size: up to this many can be chosen in each box. */
 const MAX_PER_SIZE = 10;
 
@@ -47,11 +50,18 @@ interface FormState {
   bookerName: string;
   pickupDate: string;
   pickupTime: string;
+  /** airport: a transfer from or to an airport. other: a car rental for any trip (FT-4). */
+  tripType: TripType;
   direction: Direction;
   airportId: string;
   serviceRegionId: string;
+  /** Airport trips: the city-side address. Car rentals: the pick-up address. */
   address: string;
   terminal: string;
+  /** Car rentals only. */
+  dropoffAddress: string;
+  rentalHours: number;
+  vehicleClassId: string;
   countryOrigin: string;
   hasFlightCode: "yes" | "no";
   flightCode: string;
@@ -79,11 +89,15 @@ const initialState = (options: ReservationOptions): FormState => ({
   bookerName: "",
   pickupDate: "",
   pickupTime: "14:30",
+  tripType: "airport",
   direction: "from-airport",
   airportId: options.airports[0]?.id ?? "",
   serviceRegionId: "",
   address: "",
   terminal: "",
+  dropoffAddress: "",
+  rentalHours: 3,
+  vehicleClassId: options.vehicleClasses[0]?.id ?? "",
   countryOrigin: "",
   hasFlightCode: "yes",
   flightCode: "",
@@ -135,10 +149,15 @@ export default function ReservationForm({ options }: { options: ReservationOptio
 
   // Live price: re-quote whenever a price-relevant field changes. Debounced, and a newer request
   // cancels the older one so a slow response can never overwrite a fresher price.
-  const { airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime } = form;
+  const { tripType, airportId, serviceRegionId, vehicleTypeId, vehicleClassId, rentalHours } = form;
+  const { paymentMethodId, pickupDate, pickupTime } = form;
   const addOnsKey = JSON.stringify(form.addOns);
   useEffect(() => {
-    if (!airportId || !serviceRegionId || !vehicleTypeId || !paymentMethodId || !pickupDate || !pickupTime) {
+    const rental = tripType === "other";
+    const ready = rental
+      ? vehicleClassId && paymentMethodId && pickupDate && pickupTime
+      : airportId && serviceRegionId && vehicleTypeId && paymentMethodId && pickupDate && pickupTime;
+    if (!ready) {
       setQuote({ status: "idle" });
       return;
     }
@@ -153,9 +172,15 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         status: "loading",
         previous: prev.status === "ready" ? prev.quote : prev.status === "loading" ? prev.previous : undefined,
       }));
-      requestQuote(
-        { airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOns },
-        controller.signal,
+      (rental
+        ? requestRentalQuote(
+            { vehicleClassId, rentalHours, paymentMethodId, pickupDate, pickupTime, addOns },
+            controller.signal,
+          )
+        : requestQuote(
+            { airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOns },
+            controller.signal,
+          )
       )
         .then((result: Quote) => setQuote({ status: "ready", quote: result }))
         .catch((error: unknown) => {
@@ -168,7 +193,18 @@ export default function ReservationForm({ options }: { options: ReservationOptio
       clearTimeout(timer);
       controller.abort();
     };
-  }, [airportId, serviceRegionId, vehicleTypeId, paymentMethodId, pickupDate, pickupTime, addOnsKey]);
+  }, [
+    tripType,
+    airportId,
+    serviceRegionId,
+    vehicleTypeId,
+    vehicleClassId,
+    rentalHours,
+    paymentMethodId,
+    pickupDate,
+    pickupTime,
+    addOnsKey,
+  ]);
 
   // Saves the booking. The server recalculates the price and holds a car for the pickup time;
   // if none is free it says so, and the customer can pick another time or car type.
@@ -179,20 +215,47 @@ export default function ReservationForm({ options }: { options: ReservationOptio
     setSubmitError(null);
     setCanWaitlist(false);
     try {
+      // Airport trips and car rentals send different trip fields (FT-4).
+      const trip: Pick<
+        BookingRequest,
+        | "tripType"
+        | "airportId"
+        | "serviceRegionId"
+        | "vehicleTypeId"
+        | "direction"
+        | "vehicleClassId"
+        | "dropoffAddress"
+        | "rentalHours"
+        | "terminal"
+        | "flightCode"
+      > =
+        form.tripType === "airport"
+          ? {
+              tripType: "airport",
+              airportId: form.airportId,
+              serviceRegionId: form.serviceRegionId,
+              vehicleTypeId: form.vehicleTypeId,
+              direction: form.direction === "from-airport" ? "from_airport" : "to_airport",
+              terminal: form.terminal.trim() || null,
+              flightCode: form.hasFlightCode === "yes" ? form.flightCode.trim() || null : null,
+            }
+          : {
+              tripType: "other",
+              vehicleClassId: form.vehicleClassId,
+              dropoffAddress: form.dropoffAddress,
+              rentalHours: form.rentalHours,
+              terminal: null,
+              flightCode: null,
+            };
       const saved = await createBooking({
-        airportId: form.airportId,
-        serviceRegionId: form.serviceRegionId,
-        vehicleTypeId: form.vehicleTypeId,
+        ...trip,
         paymentMethodId: form.paymentMethodId,
         pickupDate: form.pickupDate,
         pickupTime: form.pickupTime,
         addOns: Object.entries(form.addOns)
           .filter(([, quantity]) => quantity > 0)
           .map(([addOnId, quantity]) => ({ addOnId, quantity })),
-        direction: form.direction === "from-airport" ? "from_airport" : "to_airport",
         address: form.address,
-        terminal: form.terminal.trim() || null,
-        flightCode: form.hasFlightCode === "yes" ? form.flightCode.trim() || null : null,
         salutation: form.salutation,
         passengerName: form.fullName,
         bookerName: form.bookingFor === "no" ? form.bookerName.trim() || null : null,
@@ -258,13 +321,149 @@ export default function ReservationForm({ options }: { options: ReservationOptio
       return { ...prev, airportId: id, serviceRegionId: regionStillServed ? prev.serviceRegionId : "" };
     });
   }
+  const rental = form.tripType === "other";
   const fromAirport = form.direction === "from-airport";
   const terminalLabel = fromAirport ? "Arrival terminal" : "Departure terminal";
   const luggageSummary = luggageText(form.luggage);
-  const flightCode = form.hasFlightCode === "yes" ? form.flightCode.trim() : "";
+  const flightCode = !rental && form.hasFlightCode === "yes" ? form.flightCode.trim() : "";
   const airportWithTerminal = [airport?.name, form.terminal.trim()].filter(Boolean).join(", ");
+  const selectedClass = options.vehicleClasses.find((c) => c.id === form.vehicleClassId);
+  const hoursText = (hours: number) => `${hours} ${hours === 1 ? "hour" : "hours"}`;
   // Pets need longer at the airport (quarantine, customs); otherwise the standard 1–1.5 h after landing.
-  const pickupHint = form.petInfo.trim() ? PET_PICKUP_TIME_HINT : fromAirport ? PICKUP_TIME_HINT : null;
+  const pickupHint = rental ? null : form.petInfo.trim() ? PET_PICKUP_TIME_HINT : fromAirport ? PICKUP_TIME_HINT : null;
+  // What the confirmation and the ticket show for each end of the trip.
+  const pickupPlace = rental ? form.address : fromAirport ? airportWithTerminal : form.address;
+  const dropoffPlace = rental ? form.dropoffAddress : fromAirport ? form.address : airportWithTerminal;
+  const routeLabel = rental
+    ? `${placeName(form.address)} → ${placeName(form.dropoffAddress)}`
+    : `${fromAirport ? airport?.name : region?.name} → ${fromAirport ? region?.name : airport?.name}`;
+
+  function changeTripType(next: TripType) {
+    setForm((prev) => ({ ...prev, tripType: next }));
+  }
+
+  // The ↔ button (FT-4): airport trips flip direction; car rentals swap the two addresses.
+  function swapPickupAndDropoff() {
+    setForm((prev) =>
+      prev.tripType === "airport"
+        ? { ...prev, direction: prev.direction === "from-airport" ? "to-airport" : "from-airport" }
+        : { ...prev, address: prev.dropoffAddress, dropoffAddress: prev.address },
+    );
+  }
+
+  // The airport side (airport + terminal) and the city side (area + address) of an airport trip. Which
+  // one is the pick-up depends on the direction.
+  const airportSide = (
+    <div className="grid-2">
+      <div className="field">
+        <label htmlFor="airportId">
+          Airport <span className="req">*</span>
+        </label>
+        <select id="airportId" required value={form.airportId} onChange={(e) => changeAirport(e.target.value)}>
+          {options.airports.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} ({a.code})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="terminal">
+          {terminalLabel} <span className="hint">— optional</span>
+        </label>
+        <input
+          type="text"
+          id="terminal"
+          placeholder="e.g. Terminal 3"
+          maxLength={40}
+          value={form.terminal}
+          onChange={(e) => update("terminal", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+  const citySide = (
+    <div className="grid-2">
+      <div className="field">
+        <label htmlFor="serviceRegionId">
+          {fromAirport ? "Drop-off area" : "Pick-up area"} <span className="req">*</span>
+        </label>
+        <select
+          id="serviceRegionId"
+          required
+          value={form.serviceRegionId}
+          onChange={(e) => update("serviceRegionId", e.target.value)}
+        >
+          <option value="" disabled>
+            Select ward or city
+          </option>
+          {wards.length > 0 && (
+            <optgroup label="Tokyo 23 wards">
+              {wards.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {otherAreas.length > 0 && (
+            <optgroup label="Other areas">
+              {otherAreas.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="address">
+          {fromAirport ? "Drop-off address" : "Pick-up address"} <span className="req">*</span>
+        </label>
+        <input
+          type="text"
+          id="address"
+          placeholder="Hotel or building name and full address"
+          required
+          value={form.address}
+          onChange={(e) => update("address", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+  const rentalPickup = (
+    <div className="field">
+      <label htmlFor="address">
+        Pick-up address <span className="req">*</span>
+      </label>
+      <input
+        type="text"
+        id="address"
+        placeholder="Hotel or building name and full address"
+        required
+        maxLength={300}
+        value={form.address}
+        onChange={(e) => update("address", e.target.value)}
+      />
+    </div>
+  );
+  const rentalDropoff = (
+    <div className="field">
+      <label htmlFor="dropoffAddress">
+        Drop-off address <span className="req">*</span>
+      </label>
+      <input
+        type="text"
+        id="dropoffAddress"
+        placeholder="Hotel or building name and full address"
+        required
+        maxLength={300}
+        value={form.dropoffAddress}
+        onChange={(e) => update("dropoffAddress", e.target.value)}
+      />
+    </div>
+  );
 
   return (
     <div className="layout">
@@ -288,17 +487,21 @@ export default function ReservationForm({ options }: { options: ReservationOptio
               </div>
               <div>
                 <dt>Route</dt>
-                <dd>
-                  {fromAirport ? airport?.name : region?.name} → {fromAirport ? region?.name : airport?.name}
-                </dd>
+                <dd>{routeLabel}</dd>
+              </div>
+              {rental && (
+                <div>
+                  <dt>Car rental</dt>
+                  <dd>{hoursText(form.rentalHours)}</dd>
+                </div>
+              )}
+              <div className="wide">
+                <dt>{!rental && fromAirport ? "Pick-up point" : "Pick-up address"}</dt>
+                <dd>{pickupPlace}</dd>
               </div>
               <div className="wide">
-                <dt>{fromAirport ? "Pick-up point" : "Pick-up address"}</dt>
-                <dd>{fromAirport ? airportWithTerminal : form.address}</dd>
-              </div>
-              <div className="wide">
-                <dt>{fromAirport ? "Drop-off address" : "Drop-off point"}</dt>
-                <dd>{fromAirport ? form.address : airportWithTerminal}</dd>
+                <dt>{!rental && !fromAirport ? "Drop-off point" : "Drop-off address"}</dt>
+                <dd>{dropoffPlace}</dd>
               </div>
               {flightCode && (
                 <div>
@@ -322,13 +525,23 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   <dd>{form.oversizedLuggage.trim()}</dd>
                 </div>
               )}
-              <div className="wide">
-                <dt>{receipt.quoteRequired ? "Estimated from" : "Estimated total"}</dt>
-                <dd>
-                  {yen(receipt.totalJpy)} · {receipt.paymentLabel}
-                  <span className="dd-note">{ESTIMATE_NOTE}</span>
-                </dd>
-              </div>
+              {rental ? (
+                <div className="wide">
+                  <dt>Price</dt>
+                  <dd>
+                    Quoted by our staff · {receipt.paymentLabel}
+                    <span className="dd-note">We&apos;ll email you the rental price to confirm your booking.</span>
+                  </dd>
+                </div>
+              ) : (
+                <div className="wide">
+                  <dt>{receipt.quoteRequired ? "Estimated from" : "Estimated total"}</dt>
+                  <dd>
+                    {yen(receipt.totalJpy)} · {receipt.paymentLabel}
+                    <span className="dd-note">{ESTIMATE_NOTE}</span>
+                  </dd>
+                </div>
+              )}
             </dl>
             {receipt.status === "waitlisted" ? (
               <p>
@@ -460,109 +673,55 @@ export default function ReservationForm({ options }: { options: ReservationOptio
               </div>
             </div>
 
-            <div className="field" style={{ marginTop: 18 }}>
-              <label>
-                Trip <span className="req">*</span>
-              </label>
-              <div className="segmented">
-                <input
-                  type="radio"
-                  name="direction"
-                  id="dirFrom"
-                  checked={fromAirport}
-                  onChange={() => update("direction", "from-airport")}
-                />
-                <label htmlFor="dirFrom">From the airport</label>
-                <input
-                  type="radio"
-                  name="direction"
-                  id="dirTo"
-                  checked={!fromAirport}
-                  onChange={() => update("direction", "to-airport")}
-                />
-                <label htmlFor="dirTo">To the airport</label>
-              </div>
-            </div>
-
             <div className="grid-2" style={{ marginTop: 18 }}>
               <div className="field">
-                <label htmlFor="airportId">
-                  Airport <span className="req">*</span>
+                <label htmlFor="tripType">
+                  Trip <span className="req">*</span>
                 </label>
-                <select
-                  id="airportId"
-                  required
-                  value={form.airportId}
-                  onChange={(e) => changeAirport(e.target.value)}
-                >
-                  {options.airports.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.code})
-                    </option>
-                  ))}
+                <select id="tripType" value={form.tripType} onChange={(e) => changeTripType(e.target.value as TripType)}>
+                  <option value="airport">Airport Pickup</option>
+                  <option value="other">Others</option>
                 </select>
               </div>
-              <div className="field">
-                <label htmlFor="terminal">
-                  {terminalLabel} <span className="hint">— optional</span>
-                </label>
-                <input
-                  type="text"
-                  id="terminal"
-                  placeholder="e.g. Terminal 3"
-                  maxLength={40}
-                  value={form.terminal}
-                  onChange={(e) => update("terminal", e.target.value)}
-                />
-              </div>
+              {rental && (
+                <div className="field">
+                  <label htmlFor="rentalHours">
+                    How long do you need the car? <span className="req">*</span>
+                  </label>
+                  <select
+                    id="rentalHours"
+                    value={form.rentalHours}
+                    onChange={(e) => update("rentalHours", Number(e.target.value))}
+                  >
+                    {RENTAL_HOURS.map((hours) => (
+                      <option key={hours} value={hours}>
+                        {hoursText(hours)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            <div className="grid-2" style={{ marginTop: 18 }}>
-              <div className="field">
-                <label htmlFor="serviceRegionId">
-                  {fromAirport ? "Drop-off area" : "Pick-up area"} <span className="req">*</span>
-                </label>
-                <select
-                  id="serviceRegionId"
-                  required
-                  value={form.serviceRegionId}
-                  onChange={(e) => update("serviceRegionId", e.target.value)}
-                >
-                  <option value="" disabled>
-                    Select ward or city
-                  </option>
-                  {wards.length > 0 && (
-                    <optgroup label="Tokyo 23 wards">
-                      {wards.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {otherAreas.length > 0 && (
-                    <optgroup label="Other areas">
-                      {otherAreas.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+            <div className="route-box">
+              <div className="route-leg">
+                <span className="route-leg-title">Pick-up</span>
+                {rental ? rentalPickup : fromAirport ? airportSide : citySide}
               </div>
-              <div className="field">
-                <label htmlFor="address">
-                  {fromAirport ? "Drop-off address" : "Pick-up address"} <span className="req">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  placeholder="Hotel or building name and full address"
-                  required
-                  value={form.address}
-                  onChange={(e) => update("address", e.target.value)}
-                />
+              <div className="route-swap">
+                <button
+                  type="button"
+                  className="swap-btn"
+                  onClick={swapPickupAndDropoff}
+                  aria-label="Swap pick-up and drop-off"
+                  title="Swap pick-up and drop-off"
+                >
+                  <span aria-hidden="true">↔</span> Swap
+                </button>
+              </div>
+              <div className="route-leg">
+                <span className="route-leg-title">Drop-off</span>
+                {rental ? rentalDropoff : fromAirport ? citySide : airportSide}
               </div>
             </div>
 
@@ -586,6 +745,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   ))}
                 </datalist>
               </div>
+              {!rental && (
               <div className="field">
                 <label>
                   Do you have a flight code? <span className="req">*</span>
@@ -609,9 +769,10 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   <label htmlFor="fcNo">No</label>
                 </div>
               </div>
+              )}
             </div>
 
-            {form.hasFlightCode === "yes" && (
+            {!rental && form.hasFlightCode === "yes" && (
               <div className="conditional">
                 <div className="field">
                   <label htmlFor="flightCode">Flight code</label>
@@ -744,7 +905,23 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                 Requested car type <span className="req">*</span>
               </label>
               <div className="car-options">
-                {options.vehicleTypes.map((vehicle) => {
+                {rental &&
+                  options.vehicleClasses.map((vehicleClass) => (
+                    <div className="car-card" key={vehicleClass.id}>
+                      <input
+                        type="radio"
+                        name="vehicleType"
+                        id={`vc-${vehicleClass.code}`}
+                        checked={form.vehicleClassId === vehicleClass.id}
+                        onChange={() => update("vehicleClassId", vehicleClass.id)}
+                      />
+                      <label htmlFor={`vc-${vehicleClass.code}`}>
+                        <span className="name">{vehicleClass.name}</span>
+                        <span className="surcharge">Price on request</span>
+                      </label>
+                    </div>
+                  ))}
+                {!rental && options.vehicleTypes.map((vehicle) => {
                   const badge = surchargeBadge(vehicle.surchargeJpy);
                   return (
                     <div className="car-card" key={vehicle.id}>
@@ -986,8 +1163,9 @@ export default function ReservationForm({ options }: { options: ReservationOptio
       <TicketPreview
         salutation={form.salutation}
         fullName={form.fullName}
-        origin={fromAirport ? airport?.name : region?.name}
-        destination={fromAirport ? region?.name : airport?.name}
+        origin={rental ? placeName(form.address) || undefined : fromAirport ? airport?.name : region?.name}
+        destination={rental ? placeName(form.dropoffAddress) || undefined : fromAirport ? region?.name : airport?.name}
+        rentalHours={rental ? form.rentalHours : undefined}
         pickupDate={form.pickupDate}
         pickupTime={form.pickupTime}
         hasFlightCode={form.hasFlightCode}
@@ -995,7 +1173,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         terminal={form.terminal}
         passengers={form.passengers}
         luggage={luggageSummary === "No luggage" ? "" : luggageSummary}
-        vehicleLabel={selectedVehicle?.label}
+        vehicleLabel={rental ? selectedClass?.name : selectedVehicle?.label}
         paymentLabel={selectedPayment?.label}
         quote={quote}
       />
