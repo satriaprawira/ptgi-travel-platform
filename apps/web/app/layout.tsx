@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { COMPANY_NAME, SITE_URL } from "@/lib/content";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -24,9 +25,17 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Goal International Co., Ltd",
+  // Canonical links and social previews use the live address (NEXT_PUBLIC_SITE_URL).
+  metadataBase: new URL(SITE_URL),
+  title: COMPANY_NAME,
   description: "Reserve a private airport pickup across Tokyo.",
-  icons: "/logo/goal-intl-logo.png"
+  icons: "/logo/goal-intl-logo.png",
+  openGraph: {
+    type: "website",
+    siteName: COMPANY_NAME,
+    locale: "en",
+    images: [{ url: "/site/photos/hero.jpg", width: 328, height: 415, alt: "Black Toyota Alphard at night in Tokyo" }],
+  },
 };
 
 export default function RootLayout({

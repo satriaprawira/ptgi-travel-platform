@@ -80,10 +80,13 @@ const SOCIAL_ICONS: Record<(typeof SOCIAL_LINKS)[number]["name"], ReactNode> = {
   ),
 };
 
-/** Customer site footer: offices, contact details, customer support, social links and copyright. */
+/**
+ * Customer site footer: offices, contact details, customer support, social links and copyright. The menu's
+ * Contact link scrolls here (#contact).
+ */
 export default function SiteFooter() {
   return (
-    <footer className={styles.footer}>
+    <footer id="contact" className={styles.footer}>
       <h2 className={styles.footerTitle}>{COMPANY_NAME}</h2>
 
       <div className={styles.offices}>
