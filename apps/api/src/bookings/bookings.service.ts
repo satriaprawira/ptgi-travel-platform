@@ -71,10 +71,43 @@ export class BookingsService {
    * is trusted.
    */
   async create(dto: CreateBookingDto, now: Date = new Date()): Promise<BookingReceipt> {
-    // Validates the trip (fare exists, vehicle type offered, pickup in the future, add-on limits).
-    const quote = await this.pricing.quote(dto, now);
+    const rental = dto.tripType === 'other';
+    if (rental && (dto.airportId || dto.serviceRegionId || dto.vehicleTypeId || dto.direction || dto.terminal)) {
+      throw new UnprocessableEntityException('Airport, area, vehicle type, direction and terminal are only for airport trips');
+    }
+    if (!rental && (dto.vehicleClassId || dto.dropoffAddress || dto.rentalHours)) {
+      throw new UnprocessableEntityException('Car category, drop-off address and rental hours are only for other trips');
+    }
 
-    const vehicleClass = await this.bookings.findVehicleClass(dto.vehicleTypeId);
+    // Validates the trip (fare exists or car category offered, pickup in the future, add-on limits).
+    const quote = rental
+      ? await this.pricing.quoteRental(
+          {
+            vehicleClassId: dto.vehicleClassId!,
+            rentalHours: dto.rentalHours!,
+            paymentMethodId: dto.paymentMethodId,
+            pickupDate: dto.pickupDate,
+            pickupTime: dto.pickupTime,
+            addOns: dto.addOns,
+          },
+          now,
+        )
+      : await this.pricing.quote(
+          {
+            airportId: dto.airportId!,
+            serviceRegionId: dto.serviceRegionId!,
+            vehicleTypeId: dto.vehicleTypeId!,
+            paymentMethodId: dto.paymentMethodId,
+            pickupDate: dto.pickupDate,
+            pickupTime: dto.pickupTime,
+            addOns: dto.addOns,
+          },
+          now,
+        );
+
+    const vehicleClass = rental
+      ? await this.bookings.findClass(dto.vehicleClassId!)
+      : await this.bookings.findVehicleClass(dto.vehicleTypeId!);
     if (!vehicleClass) throw new UnprocessableEntityException('This vehicle type is not available right now');
 
     const selections = (dto.addOns ?? []).filter((selection) => selection.quantity > 0);
@@ -83,7 +116,8 @@ export class BookingsService {
 
     const pickupAt = tokyoInstant(dto.pickupDate, dto.pickupTime)!; // already validated by the quote
     const { bufferMinutes } = await this.settings.get();
-    const holdUntil = holdUntilFor(pickupAt, bufferMinutes);
+    // A car rental holds the car for the hours asked for; a transfer for the standard hold.
+    const holdUntil = holdUntilFor(pickupAt, bufferMinutes, rental ? dto.rentalHours : undefined);
 
     const id = await this.db.transaction(async (client) => {
       await this.bookings.lockVehicleClass(client, vehicleClass.id);
@@ -96,6 +130,7 @@ export class BookingsService {
       }
       return this.bookings.insert(client, {
         dto,
+        vehicleLabel: rental ? vehicleClass.name : null,
         // A customer who asked for the waiting list still gets a normal booking if a car is free.
         status: free ? 'new' : 'waitlisted',
         vehicleClassId: vehicleClass.id,
@@ -270,7 +305,7 @@ export class BookingsService {
   /** Where a new or confirmed booking would stand at another time: availability, free cars and drivers, price. */
   async reschedulePreview(id: string, query: ReschedulePreviewQueryDto, now: Date = new Date()): Promise<ReschedulePreview> {
     const booking = await this.getReschedulable(id);
-    const { pickupAt, holdUntil, bufferMinutes } = await this.newWindow(query, now);
+    const { pickupAt, holdUntil, bufferMinutes } = await this.newWindow(query, now, booking.rentalHours);
     const inputs = (await this.bookings.findQuoteInputs(id))!;
     const fleetTrip = booking.status === 'confirmed' && booking.vehicle !== null;
 
@@ -308,7 +343,7 @@ export class BookingsService {
     if (dto.finalTotalJpy !== undefined && !(booking.status === 'confirmed' && booking.quoteRequired)) {
       throw new UnprocessableEntityException('finalTotalJpy is only for confirmed bookings with a quoted price');
     }
-    const { pickupAt, holdUntil, bufferMinutes } = await this.newWindow(dto, now);
+    const { pickupAt, holdUntil, bufferMinutes } = await this.newWindow(dto, now, booking.rentalHours);
     const inputs = (await this.bookings.findQuoteInputs(id))!;
 
     let price = {
@@ -380,10 +415,11 @@ export class BookingsService {
     return booking;
   }
 
-  /** The hold window for a new pickup time, with today's buffer between bookings. */
+  /** The hold window for a new pickup time, with today's buffer between bookings. `rentalHours` for car rentals. */
   private async newWindow(
     when: ReschedulePreviewQueryDto,
     now: Date,
+    rentalHours: number | null,
   ): Promise<{ pickupAt: Date; holdUntil: Date; bufferMinutes: number }> {
     const pickupAt = tokyoInstant(when.pickupDate, when.pickupTime);
     if (!pickupAt) throw new UnprocessableEntityException('pickupDate is not a valid calendar date');
@@ -391,7 +427,7 @@ export class BookingsService {
       throw new UnprocessableEntityException('The new pickup time has already passed');
     }
     const { bufferMinutes } = await this.settings.get();
-    return { pickupAt, holdUntil: holdUntilFor(pickupAt, bufferMinutes), bufferMinutes };
+    return { pickupAt, holdUntil: holdUntilFor(pickupAt, bufferMinutes, rentalHours ?? undefined), bufferMinutes };
   }
 
   /**
@@ -400,6 +436,9 @@ export class BookingsService {
    * be priced (route hidden, car type no longer offered…).
    */
   private async reprice(inputs: QuoteInputs, when: ReschedulePreviewQueryDto): Promise<{ quote: Quote | null; error: string | null }> {
+    if (!inputs.airportId || !inputs.serviceRegionId || !inputs.vehicleTypeId) {
+      return { quote: null, error: 'car rentals are priced by staff' };
+    }
     try {
       const quote = await this.pricing.quote(
         {

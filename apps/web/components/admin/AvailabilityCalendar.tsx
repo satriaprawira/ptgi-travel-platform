@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import styles from "../AdminDashboard.module.css";
 import { PanelHead, badgeClass } from "./ui";
-import { tripDateTime, yen } from "@/lib/api/format";
+import { bookingRoute, tripDateTime, yen } from "@/lib/api/format";
 import { getSchedule, type AdminBooking } from "@/lib/api/bookings";
 import { listDrivers, listVehicles, type Driver, type Vehicle } from "@/lib/api/fleet";
 import { getSettings, updateSettings, type BookingSettings } from "@/lib/api/settings";
@@ -47,10 +47,7 @@ const tokyoTime = (iso: string) => new Date(Date.parse(iso) + TOKYO_OFFSET_MS).t
 const tripEndMs = (booking: AdminBooking) => Date.parse(booking.holdUntil) - booking.bufferMinutes * 60_000;
 const tripEndTime = (booking: AdminBooking) => tokyoTime(new Date(tripEndMs(booking)).toISOString());
 
-const routeText = (booking: AdminBooking) =>
-  booking.direction === "from_airport"
-    ? `${booking.airport.name} → ${booking.regionName}`
-    : `${booking.regionName} → ${booking.airport.name}`;
+const routeText = bookingRoute;
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : "Something went wrong");
 
@@ -141,8 +138,19 @@ function BookingCard({ hovered }: { hovered: Hovered }) {
         )}
         <dt>Route</dt>
         <dd>{routeText(booking)}</dd>
-        <dt>Address</dt>
-        <dd>{booking.address}</dd>
+        {booking.tripType === "other" ? (
+          <>
+            <dt>Pick-up</dt>
+            <dd>{booking.address}</dd>
+            <dt>Drop-off</dt>
+            <dd>{booking.dropoffAddress}</dd>
+          </>
+        ) : (
+          <>
+            <dt>Address</dt>
+            <dd>{booking.address}</dd>
+          </>
+        )}
         <dt>Vehicle</dt>
         <dd>
           {booking.vehicle
@@ -176,7 +184,9 @@ function BookingCard({ hovered }: { hovered: Hovered }) {
         <dd>
           {booking.finalTotalJpy !== null
             ? yen(booking.finalTotalJpy)
-            : `${booking.quoteRequired ? "from " : ""}${yen(booking.totalJpy)}`}{" "}
+            : booking.tripType === "other"
+              ? "On request"
+              : `${booking.quoteRequired ? "from " : ""}${yen(booking.totalJpy)}`}{" "}
           · {booking.paymentLabel}
         </dd>
       </dl>

@@ -6,6 +6,7 @@ import { VehicleTypesRepository } from '../vehicle-types/vehicle-types.repositor
 /**
  * Public: everything the reservation form offers, active rows only, sorted (design doc D7).
  * Vehicle types additionally follow the fleet: only types with an Available vehicle are listed.
+ * vehicleClasses are the car categories for "Others" trips (car rental, FT-4), under the same rule.
  */
 @Controller('reservation-options')
 export class ReservationOptionsController {
@@ -17,13 +18,14 @@ export class ReservationOptionsController {
 
   @Get()
   async list() {
-    const [vehicleTypes, paymentMethods, airports, serviceRegions, addOns] = await Promise.all([
+    const [vehicleTypes, vehicleClasses, paymentMethods, airports, serviceRegions, addOns] = await Promise.all([
       this.vehicleTypes.listOffered(),
+      this.vehicleTypes.listOfferedClasses(),
       this.paymentMethods.listActive(),
       this.pricing.listAirports(),
       this.pricing.listPricedRegions(),
       this.pricing.listActiveAddOns(),
     ]);
-    return { vehicleTypes, paymentMethods, airports, serviceRegions, addOns };
+    return { vehicleTypes, vehicleClasses, paymentMethods, airports, serviceRegions, addOns };
   }
 }

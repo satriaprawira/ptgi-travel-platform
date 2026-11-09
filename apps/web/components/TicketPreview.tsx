@@ -15,6 +15,8 @@ interface TicketPreviewProps {
   fullName: string;
   origin?: string;
   destination?: string;
+  /** Set for a car rental ("Others" trip): shown instead of the flight, and the price is quoted by staff. */
+  rentalHours?: number;
   pickupDate: string;
   pickupTime: string;
   hasFlightCode: "yes" | "no";
@@ -34,9 +36,15 @@ function formatDate(value: string): string | null {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function PriceBlock({ state }: { state: QuoteState }) {
+function PriceBlock({ state, rental }: { state: QuoteState; rental: boolean }) {
   if (state.status === "idle") {
-    return <div className="ticket-price ticket-price-hint">Choose date, time, airport and area to see your price.</div>;
+    return (
+      <div className="ticket-price ticket-price-hint">
+        {rental
+          ? "Choose date, time and car category to see your price."
+          : "Choose date, time, airport and area to see your price."}
+      </div>
+    );
   }
   if (state.status === "error") {
     return (
@@ -67,14 +75,28 @@ function PriceBlock({ state }: { state: QuoteState }) {
           </li>
         ))}
       </ul>
-      <div className="price-total">
-        <span>{quote.quoteRequired ? "Estimated from" : "Estimated Booking Cost"}</span>
-        <span>{yen(quote.totalJpy)}</span>
-      </div>
-      {quote.quoteRequired && (
-        <p className="price-note">Part of this trip is quoted by our staff. We&apos;ll confirm the final price by email.</p>
+      {rental ? (
+        <>
+          <div className="price-total">
+            <span>Rental price</span>
+            <span>On request</span>
+          </div>
+          <p className="price-note">Our staff will quote the rental price and confirm it by email.</p>
+        </>
+      ) : (
+        <>
+          <div className="price-total">
+            <span>{quote.quoteRequired ? "Estimated from" : "Estimated Booking Cost"}</span>
+            <span>{yen(quote.totalJpy)}</span>
+          </div>
+          {quote.quoteRequired && (
+            <p className="price-note">
+              Part of this trip is quoted by our staff. We&apos;ll confirm the final price by email.
+            </p>
+          )}
+          <p className="price-estimate-note">{ESTIMATE_NOTE}</p>
+        </>
       )}
-      <p className="price-estimate-note">{ESTIMATE_NOTE}</p>
     </div>
   );
 }
@@ -84,6 +106,7 @@ export default function TicketPreview({
   fullName,
   origin,
   destination,
+  rentalHours,
   pickupDate,
   pickupTime,
   hasFlightCode,
@@ -135,8 +158,10 @@ export default function TicketPreview({
               <div className="val">{pickupTime || "—"}</div>
             </div>
             <div className="m">
-              <label>Flight</label>
-              <div className="val">{flightLabel}</div>
+              <label>{rentalHours ? "Rental" : "Flight"}</label>
+              <div className="val">
+                {rentalHours ? `${rentalHours} ${rentalHours === 1 ? "hour" : "hours"}` : flightLabel}
+              </div>
             </div>
             <div className="m">
               <label>Party</label>
@@ -158,7 +183,7 @@ export default function TicketPreview({
               <div className="val">{paymentLabel ?? "Not selected"}</div>
             </div>
           </div>
-          <PriceBlock state={quote} />
+          <PriceBlock state={quote} rental={rentalHours !== undefined} />
           <div className="barcode" aria-hidden="true" />
         </div>
       </div>

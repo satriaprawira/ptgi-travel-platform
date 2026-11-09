@@ -14,6 +14,10 @@ describe('holdUntil', () => {
     expect(holdUntil(pickup, 0).toISOString()).toBe('2026-11-20T04:30:00.000Z');
   });
 
+  it("holds a car rental for the hours asked for, plus the buffer", () => {
+    expect(holdUntil(pickup, 30, 8).toISOString()).toBe('2026-11-20T10:00:00.000Z'); // 10:30 + 8 h + 30 min
+  });
+
   it('crosses midnight like any other time', () => {
     expect(holdUntil(new Date('2026-11-20T13:00:00Z'), 30).toISOString()).toBe('2026-11-20T16:30:00.000Z');
   });

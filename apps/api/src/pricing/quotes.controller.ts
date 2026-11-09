@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { CreateQuoteDto } from './dto/create-quote.dto.js';
+import { CreateRentalQuoteDto } from './dto/create-rental-quote.dto.js';
 import { PricingService } from './pricing.service.js';
 
 /** Public: the reservation form asks for a live price while the customer fills it in. */
@@ -12,5 +13,12 @@ export class QuotesController {
   @HttpCode(HttpStatus.OK)
   create(@Body() dto: CreateQuoteDto) {
     return this.pricing.quote(dto);
+  }
+
+  /** A car rental for an "Others" trip (FT-4): always "quote required", extras priced. */
+  @Post('rental')
+  @HttpCode(HttpStatus.OK)
+  rental(@Body() dto: CreateRentalQuoteDto) {
+    return this.pricing.quoteRental(dto);
   }
 }

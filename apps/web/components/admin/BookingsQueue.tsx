@@ -5,7 +5,7 @@ import styles from "../AdminDashboard.module.css";
 import RescheduleModal from "./RescheduleModal";
 import { FormModal, PanelHead, TableMessage, badgeClass } from "./ui";
 import type { BadgeVariant } from "@/lib/adminData";
-import { tripDateTime, yen } from "@/lib/api/format";
+import { bookingRoute, tripDateTime, yen } from "@/lib/api/format";
 import {
   cancelBooking,
   confirmBooking,
@@ -39,14 +39,12 @@ const agreedAt = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
 });
 
-function routeText(booking: AdminBooking): string {
-  return booking.direction === "from_airport"
-    ? `${booking.airport.name} → ${booking.regionName}`
-    : `${booking.regionName} → ${booking.airport.name}`;
-}
+const routeText = bookingRoute;
 
 function priceText(booking: AdminBooking): string {
   if (booking.finalTotalJpy !== null) return yen(booking.finalTotalJpy);
+  // A car rental is priced entirely by staff (FT-4).
+  if (booking.tripType === "other") return "On request";
   return booking.quoteRequired ? `from ${yen(booking.totalJpy)}` : yen(booking.totalJpy);
 }
 
@@ -512,7 +510,11 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
             {confirming.quoteRequired && (
               <div className={styles.field}>
                 <label htmlFor="booking-final-price">
-                  Final price (¥) — customer was shown &ldquo;from {yen(confirming.totalJpy)}&rdquo;
+                  {confirming.tripType === "other" ? (
+                    <>Rental price (¥), including extras — customer was shown &ldquo;price on request&rdquo;</>
+                  ) : (
+                    <>Final price (¥) — customer was shown &ldquo;from {yen(confirming.totalJpy)}&rdquo;</>
+                  )}
                 </label>
                 <input
                   id="booking-final-price"
@@ -521,7 +523,7 @@ export default function BookingsQueue({ title, description, showToast }: Props) 
                   min={1}
                   max={10000000}
                   step={1}
-                  placeholder={`e.g. ${confirming.totalJpy}`}
+                  placeholder={confirming.tripType === "other" ? "e.g. 30000" : `e.g. ${confirming.totalJpy}`}
                   value={finalPrice}
                   onChange={(e) => setFinalPrice(e.target.value)}
                 />
@@ -559,6 +561,8 @@ function BookingDetails({ booking }: { booking: AdminBooking }) {
 
   const items: [string, string | null][] = [
     [booking.direction === "from_airport" ? "Drop-off address" : "Pick-up address", booking.address],
+    ["Drop-off address", booking.dropoffAddress],
+    ["Car rental", booking.rentalHours ? `${booking.rentalHours} ${booking.rentalHours === 1 ? "hour" : "hours"}` : null],
     [booking.direction === "from_airport" ? "Arrival terminal" : "Departure terminal", booking.terminal],
     ["Flight", booking.flightCode],
     ["Passengers", booking.passengers],

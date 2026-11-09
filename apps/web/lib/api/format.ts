@@ -21,6 +21,24 @@ export function tripDateTime(date: string, time: string): string {
   return `${day} ${MONTHS[month - 1]} · ${time}`;
 }
 
+/** The first part of an address: "Shibuya Stream Hotel, 3-21-3 Shibuya" → "Shibuya Stream Hotel". */
+export const placeName = (address: string) => address.split(",")[0].trim();
+
+/** "Haneda Airport → Shibuya", or for a car rental "Shibuya Stream Hotel → Hakone Yumoto". */
+export function bookingRoute(booking: {
+  tripType: "airport" | "other";
+  direction: "from_airport" | "to_airport" | null;
+  airport: { name: string } | null;
+  regionName: string | null;
+  address: string;
+  dropoffAddress: string | null;
+}): string {
+  if (booking.tripType === "other") return `${placeName(booking.address)} → ${placeName(booking.dropoffAddress ?? "")}`;
+  return booking.direction === "from_airport"
+    ? `${booking.airport?.name} → ${booking.regionName}`
+    : `${booking.regionName} → ${booking.airport?.name}`;
+}
+
 /** Vehicle card badge: "+¥3,000", "Please inquire", or nothing for no surcharge. */
 export function surchargeBadge(surchargeJpy: number | null): string | null {
   if (surchargeJpy === null) return "Please inquire";
