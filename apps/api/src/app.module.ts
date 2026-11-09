@@ -5,6 +5,7 @@ import { BookingsModule } from './bookings/bookings.module.js';
 import { validate } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
+import { FareTableModule } from './fare-table/fare-table.module.js';
 import { FaresModule } from './fares/fares.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
@@ -21,6 +22,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     HealthModule,
     // Public (customer)
     ReservationOptionsModule,
+    FareTableModule, // GET /v1/fare-table: the price list on the customer pages
     PricingModule,
     BookingsModule, // POST /v1/bookings is public; /v1/admin/bookings is staff-only
     // Admin

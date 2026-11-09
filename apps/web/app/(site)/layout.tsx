@@ -1,5 +1,6 @@
 import SiteFooter from "@/components/site/SiteFooter";
 import SiteHeader from "@/components/site/SiteHeader";
+import RevealOnScroll from "@/components/site/sections/RevealOnScroll";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 /**
@@ -13,6 +14,7 @@ export default function SiteLayout({ children }: Readonly<{ children: React.Reac
       {children}
       <SiteFooter />
       <WhatsAppButton />
+      <RevealOnScroll />
     </>
   );
 }
