@@ -32,6 +32,10 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   ...(process.env.VERCEL ? {} : { output: "standalone" }),
+  async redirects() {
+    // Contact has no page of its own: the menu's Contact scrolls to the footer. Old links to /contact land there.
+    return [{ source: "/contact", destination: "/#contact", permanent: false }];
+  },
 };
 
 export default nextConfig;
