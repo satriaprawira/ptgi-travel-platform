@@ -729,13 +729,9 @@ export const FARE_PAGE = {
   title: "Fares and policies",
   intro:
     "Fares are per car, not per person, for the trip between the airport and your area. They're the same in both directions. Prices are in Japanese yen. All prices include tax and highway tolls.",
-  baseHeading: "Base fares",
-  baseLead: "For a Standard car. Choose your airport.",
-  otherAreas: "Other areas are quoted by our staff; the price shown is the lowest it can be.",
-  quotedByStaff: "Quoted by staff",
   exactPrice: "Get your exact price",
   chargesHeading: "Additional charges",
-  chargesLead: "Added to the base fare when they apply.",
+  chargesLead: "Added to your fare when they apply.",
   /** Shown when the price list can't be loaded. */
   unavailable:
     "We couldn't load the current price list. Get your exact price in the reservation form, or chat with us on WhatsApp.",
