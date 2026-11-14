@@ -391,7 +391,9 @@
 }
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* One equal column per stat, however many homeStats() lists. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 28px;
   margin-top: 0;
   margin-bottom: 0;
@@ -621,15 +623,17 @@
 }
 .facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 900px;
+  /* One column per fact, each up to 300px wide, and the box only as wide as its facts. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 300px);
+  width: fit-content;
+  max-width: 100%;
   margin: 28px 0 0;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--paper);
 }
 .factsTwo {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: 560px;
 }
 .facts div {
@@ -1228,7 +1232,9 @@
   .heroVisual {
     margin: 0 auto;
   }
-  .statsGrid {
+  /* Four or more stats go two by two; three or fewer stay on one row. */
+  .statsGrid:has(> :nth-child(4)) {
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .aboutTeaser {
@@ -1337,7 +1343,9 @@
   }
   .facts,
   .factsTwo {
+    grid-auto-flow: row;
     grid-template-columns: minmax(0, 1fr);
+    width: auto;
   }
   .facts div {
     padding: 13px 18px;
