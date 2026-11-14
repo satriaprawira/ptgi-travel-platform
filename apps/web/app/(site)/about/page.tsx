@@ -43,17 +43,15 @@ function OfficeAddress({ office }: { office: Office }) {
 }
 
 /**
- * The fleet cards with live prices and capacities. A class the reservation form doesn't offer (no
- * Available car) is left out. Without the API, the cards show without them.
+ * Every car in FLEET always shows. Its extra cost and the most seats and suitcases among its cars are added
+ * once the fleet has an Available car of that class; until then (or without the API) the card shows without them.
  */
 function fleetCards(table: FareTable | null) {
-  return FLEET.flatMap((car) => {
-    if (!table) return [{ car, prices: [] as string[], capacity: null }];
-    const charge = table.vehicleCharges.find((c) => c.classCode === car.classCode);
-    if (!charge) return [];
-    const capacity = table.vehicleClasses.find((c) => c.code === car.classCode) ?? null;
-    const prices = chargeLines(charge).map((line) => (line === "Included" ? "Included in the fare" : line));
-    return [{ car, prices, capacity }];
+  return FLEET.map((car) => {
+    const charge = table?.vehicleCharges.find((c) => c.classCode === car.classCode);
+    const capacity = table?.vehicleClasses.find((c) => c.code === car.classCode) ?? null;
+    const prices = charge ? chargeLines(charge).map((line) => (line === "Included" ? "Included in the fare" : line)) : [];
+    return { car, prices, capacity };
   });
 }
 

@@ -108,7 +108,7 @@ export const PET_PICKUP_TIME_HINT =
  * Stored with each booking, so it's clear which wording a customer agreed to.
  * Change it to the new date whenever TERMS changes.
  */
-export const TERMS_VERSION = "2026-11-06";
+export const TERMS_VERSION = "2026-11-14";
 
 export const TERMS: { title: string; text: string }[] = [
   {
@@ -126,10 +126,6 @@ export const TERMS: { title: string; text: string }[] = [
   {
     title: "Airport Pickup",
     text: "Standard pickup is scheduled 1–1.5 hours after flight arrival, unless otherwise agreed. Please allow extra time for immigration, baggage collection, and customs if necessary.",
-  },
-  {
-    title: "Flight Delays",
-    text: "We monitor flight status online, but updates may not be real-time. Please inform us promptly of any official flight delay or schedule change.",
   },
   {
     title: "Late Arrival",
@@ -260,14 +256,14 @@ export const CTA_BAND = {
 // Home
 
 export const HOME = {
-  eyebrow: "Airport transfers · Haneda & Narita",
+  eyebrow: "Airport transfers · Tokyo & Osaka",
   title: "GOAL INTERNATIONAL",
   titleSub: "AIRPORT PICK-UP/TRANSFER",
   /** Followed by the partner's name and website. */
   intro:
     "Low-Cost Hire Taxi Service. Need a private car? Airport Transfers, Business Trips, and Private Tours — in collaboration with",
   est: "Est. 2001",
-  points: ["No payment until we confirm", "Free cancellation up to 3 days before"],
+  points: ["24/7 Support by Chat and Email"],
   photo: {
     src: "/site/photos/hero.jpg",
     width: 328,
@@ -279,8 +275,7 @@ export const HOME = {
 export function homeStats(years: number) {
   return [
     { value: "24/7", label: "Support by chat and email" },
-    { value: "2", label: "Airports: Haneda and Narita" },
-    { value: "23", label: "Tokyo wards, plus Kawasaki and Yokohama" },
+    { value: "2", label: "Cities: Tokyo and Osaka" },
     { value: String(years), label: "Years of excellent services" },
   ];
 }
@@ -299,13 +294,13 @@ export const HOME_SERVICES = {
     {
       icon: "plane-landing",
       title: "Pick up/Transfer",
-      text: "We provide 24-hour transfer and pick-up services to and from Narita and Haneda airports.",
+      text: "We provide 24-hour transfer and pick-up services to and from Tokyo airports: Haneda & Narita and Osaka airports: Kansai & Itami airports.",
       href: "/services#pickup",
     },
     {
       icon: "clock",
       title: "Hourly car rental",
-      text: "A car and driver for 1 to 12 hours, for business, sightseeing or anything in between.",
+      text: "A car and driver for 1 to 11 hours, for business, sightseeing or anything in between.",
       href: "/services#hourly",
     },
     {
@@ -320,7 +315,7 @@ export const HOME_SERVICES = {
 
 export const HOME_ABOUT = {
   eyebrow: "About us",
-  heading: "We provide 24-hour transfer and pick-up services to and from Narita and Haneda airports.",
+  heading: "We provide 24-hour transfer and pick-up services to and from airports in Tokyo and Osaka.",
   text: "Your satisfaction is our priority — we guarantee competitive prices and exceptional service.",
 };
 
@@ -376,8 +371,7 @@ export const SERVICES_PAGE = {
     "We are fully licensed professional chauffeurs, registered under the Ministry of Land, Infrastructure, Transport and Tourism.",
   credentials: [
     { label: "Languages", value: "English, Japanese, Indonesian" },
-    { label: "Hire taxi license", value: "関自旅二第461", lang: "ja" },
-    { label: "Bus license", value: "関自旅一第１２８６", lang: "ja" },
+    { label: "Hire taxi license", value: "関自旅二第461", lang: "ja" }
   ],
 };
 
@@ -385,43 +379,39 @@ export const SERVICES = [
   {
     id: "pickup",
     icon: "plane-landing",
-    title: "Airport pickup",
-    text: "Land, collect your bags and walk out to a driver holding a sign with your name. No taxi queue, no train transfers with luggage.",
+    title: "Airport Pick-up and Drop-off",
+    text: "Land, collect your bags and walk out to a driver. No taxi queue, no train transfers with luggage.",
     points: [
-      "Meet and greet at arrivals, with your name on a sign",
-      "We follow your flight online; tell us about any delay",
       "Pickup 1–1.5 hours after landing, time for immigration and baggage",
-      "Travelling with a pet? We plan 2.5–3 hours for quarantine",
+      "Travelling with a pet? We plan 2.5–3 hours for quarantine"
     ],
-    photo: { src: "/site/photos/pickup.jpg", width: 255, height: 302, alt: "People in suits outside an airport terminal", position: "50% 18%" },
-    /** Show the cheapest fare from each airport next to the link. */
-    showFromPrices: true,
+    photo: { src: "/site/photos/pickup.jpg", width: 468, height: 309, alt: "Narita Airport Terminal 1 with a plane taking off", position: "10% 50%" },
     link: { label: "Get a quotation", href: QUOTATION_HREF },
   },
   {
     id: "drop-off",
     icon: "plane-takeoff",
-    title: "Airport drop-off",
+    title: "Hotel-to-Destination Transfers",
     text: "We pick you up at your hotel or home and drive you to Haneda or Narita, so you arrive relaxed and on time.",
     points: [
       "Pickup at your address at the time you choose",
       "The same area fares as airport pickups",
       "Tell us your suitcase sizes and we'll make sure they fit",
     ],
-    photo: { src: "/site/photos/dropoff.jpg", width: 267, height: 299, alt: "Two people smiling for a photo outdoors" },
+    photo: { src: "/site/photos/dropoff.jpg", width: 750, height: 1000, alt: "Black Toyota Alphard parked under cherry blossoms", position: "50% 80%" },
     link: { label: "Get a quotation", href: QUOTATION_HREF },
   },
   {
     id: "hourly",
     icon: "clock",
-    title: "Hourly car rental",
+    title: "Private Car Charter for a One-Day Trip",
     text: "Need a car for meetings, a day of sightseeing or several stops? Book a car and driver by the hour.",
     points: [
-      "From 1 to 12 hours",
+      "11 hours per day",
       "Pick-up and drop-off wherever you need",
       "Choose the car; we send you a price for your trip",
     ],
-    photo: { src: "/site/photos/hourly.jpg", width: 600, height: 800, alt: "Silver minivan parked by a building", position: "50% 62%" },
+    photo: { src: "/site/photos/hourly.jpg", width: 876, height: 900, alt: "Black Toyota Alphard parked in the snow" },
     chip: "Price quoted by our staff",
     link: { label: "Request a quotation", href: QUOTATION_HREF },
   },
@@ -445,6 +435,7 @@ export const SERVICES = [
   text: string;
   points: readonly string[];
   photo: Photo;
+  /** true shows the cheapest fare from each airport next to the link ("From ¥9,000 (Haneda) · …"). */
   showFromPrices?: boolean;
   chip?: string;
   link: Link;
@@ -477,12 +468,12 @@ export const VALUES = [
   {
     icon: "tag",
     title: "Clear prices",
-    text: "Fares are set by area and published on our Fare page, so you know the price before you book.",
+    text: "Fares are set by area and estimated on the quotation, so you know the price before you book.",
   },
   {
     icon: "plane",
     title: "Pickups timed to your flight",
-    text: "We plan your pickup around your landing time and follow your flight online.",
+    text: "We plan your pickup around your landing time.",
   },
   { icon: "headset", title: "Help any time", text: SUPPORT_NOTE },
 ] as const;
@@ -600,7 +591,7 @@ export const BOOKING_STEPS: {
       "The trip: Airport Pickup, or Others for a car by the hour.",
       "The airport and terminal, then the area and address you're going to.",
       "Going to the airport instead? Tap Swap.",
-      "Your flight code, so we can follow your flight.",
+      "Your flight code, so we can plan your pickup around your landing time.",
     ],
     alt: "Step 1 of the reservation form: Trip details",
     wide: { src: "/how-to-book/step-1-wide.jpg", width: 1038, height: 1367, dots: [[1, 0, 9.3], [2, 0, 27], [3, 0, 38.9], [4, 0, 52.4], [5, 41.2, 62.1], [6, 0, 90.3]] },
@@ -692,7 +683,7 @@ export const AFTER_BOOKING = {
     {
       icon: "sign",
       title: "Meet your driver",
-      text: "On the day, your driver waits at arrivals with your name on a sign, or at your address for drop-offs.",
+      text: "On the day, your driver waits at the designated pick-up point, or at your address for drop-offs.",
     },
   ],
   chatHeading: "Rather book by chat?",
@@ -729,13 +720,9 @@ export const FARE_PAGE = {
   title: "Fares and policies",
   intro:
     "Fares are per car, not per person, for the trip between the airport and your area. They're the same in both directions. Prices are in Japanese yen. All prices include tax and highway tolls.",
-  baseHeading: "Base fares",
-  baseLead: "For a Standard car. Choose your airport.",
-  otherAreas: "Other areas are quoted by our staff; the price shown is the lowest it can be.",
-  quotedByStaff: "Quoted by staff",
   exactPrice: "Get your exact price",
   chargesHeading: "Additional charges",
-  chargesLead: "Added to the base fare when they apply.",
+  chargesLead: "Added to your fare when they apply.",
   /** Shown when the price list can't be loaded. */
   unavailable:
     "We couldn't load the current price list. Get your exact price in the reservation form, or chat with us on WhatsApp.",

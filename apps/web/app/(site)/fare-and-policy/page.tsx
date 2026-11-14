@@ -1,7 +1,6 @@
 import Link from "next/link";
-import FareTable from "@/components/site/sections/FareTable";
 import Icon, { type IconName } from "@/components/site/sections/Icon";
-import { ArrowLink, CtaBand, EXTERNAL, PolicyAccordion, SectionHead } from "@/components/site/sections/Parts";
+import { CtaBand, EXTERNAL, PolicyAccordion, SectionHead } from "@/components/site/sections/Parts";
 import styles from "@/components/site/sections/Sections.module.css";
 import { loadFareTable, type FareTable as PriceList } from "@/lib/api/fareTable";
 import { windowText, yen } from "@/lib/api/format";
@@ -25,7 +24,7 @@ export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
   title: "Fare and Policy – Goal International",
   description:
-    "Fares per car between Haneda or Narita and your area, extra charges, payment options, and our booking, cancellation, luggage and pet policies.",
+    "How our airport transfer fares work, extra charges, payment options, and our booking, cancellation, luggage and pet policies.",
   path: "/fare-and-policy",
 });
 
@@ -62,7 +61,12 @@ function Charges({ table }: { table: PriceList }) {
   const example = priceExample(table, FARE_PAGE.example);
   return (
     <>
-      <SectionHead heading={FARE_PAGE.chargesHeading} lead={FARE_PAGE.chargesLead} className={styles.chargesHead} />
+      <SectionHead
+        id="charges-title"
+        heading={FARE_PAGE.chargesHeading}
+        lead={FARE_PAGE.chargesLead}
+        className={styles.chargesHead}
+      />
       <div className={`${styles.grid} ${styles.g2}`} data-reveal="">
         <RateCard
           icon="car"
@@ -166,23 +170,16 @@ export default async function FareAndPolicyPage() {
         </div>
       </section>
 
-      {/* 2. Fares */}
-      <section className={`${styles.sec} ${styles.faresSec}`} id="fares" aria-labelledby={table ? "base-fares" : undefined} aria-label={table ? undefined : "Fares"}>
+      {/* 2. Additional charges (the area fares aren't listed: customers get their price in the form) */}
+      <section
+        className={`${styles.sec} ${styles.faresSec}`}
+        id="charges"
+        aria-labelledby={table ? "charges-title" : undefined}
+        aria-label={table ? undefined : "Prices"}
+      >
         <div className={styles.wrap}>
-          {table && table.airports.length > 0 ? (
-            <>
-              <FareTable
-                airports={table.airports}
-                heading={FARE_PAGE.baseHeading}
-                lead={FARE_PAGE.baseLead}
-                quotedByStaff={FARE_PAGE.quotedByStaff}
-              />
-              <div className={styles.fareFoot}>
-                <p className={styles.muted}>{FARE_PAGE.otherAreas}</p>
-                <ArrowLink href={QUOTATION_HREF}>{FARE_PAGE.exactPrice}</ArrowLink>
-              </div>
-              <Charges table={table} />
-            </>
+          {table ? (
+            <Charges table={table} />
           ) : (
             <>
               <div className={`${styles.card} ${styles.unavailable}`} role="status">

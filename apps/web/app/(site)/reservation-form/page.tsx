@@ -18,8 +18,8 @@ export default async function ReservationFormPage() {
       <div className="hero">
         <h1>Reserve your airport pickup</h1>
         <p>
-          Tell us your flight and where you&apos;re headed. A driver will be waiting at arrivals with your name on a
-          sign.
+          Tell us your flight and where you&apos;re headed. Your driver will meet you at the designated pick-up
+          point.
         </p>
       </div>
 

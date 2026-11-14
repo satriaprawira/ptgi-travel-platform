@@ -63,7 +63,7 @@ export default async function ServicesPage() {
                 <p className={styles.body}>{service.text}</p>
                 <CheckList items={service.points} />
                 <div className={styles.svcMeta}>
-                  {"showFromPrices" in service && fromPrices && (
+                  {"showFromPrices" in service && service.showFromPrices === true && fromPrices && (
                     <span className={`${styles.chip} ${styles.chipAccent}`}>{fromPrices}</span>
                   )}
                   {"chip" in service && <span className={styles.chip}>{service.chip}</span>}

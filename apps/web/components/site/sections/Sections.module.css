@@ -391,7 +391,9 @@
 }
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* One equal column per stat, however many homeStats() lists. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 28px;
   margin-top: 0;
   margin-bottom: 0;
@@ -621,15 +623,17 @@
 }
 .facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 900px;
+  /* One column per fact, each up to 300px wide, and the box only as wide as its facts. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 300px);
+  width: fit-content;
+  max-width: 100%;
   margin: 28px 0 0;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--paper);
 }
 .factsTwo {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: 560px;
 }
 .facts div {
@@ -962,83 +966,8 @@
 .faresSec {
   padding-top: 40px;
 }
-.faresHead {
-  margin-bottom: 24px;
-}
-.seg {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-}
-.seg button {
-  padding: 10px 22px;
-  border: 0;
-  background: none;
-  font: 500 14px var(--font-body), sans-serif;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-.seg button + button {
-  border-left: 1.5px solid var(--line);
-}
-.seg button[aria-pressed="true"] {
-  background: var(--indigo);
-  color: #fff;
-}
-.seg button:focus-visible {
-  outline: 2px solid var(--indigo);
-  outline-offset: -2px;
-}
-.fareCard {
-  padding: 8px 28px;
-}
-.fareRow {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 20px;
-  align-items: baseline;
-  padding: 18px 0;
-}
-.fareRow + .fareRow {
-  border-top: 1px solid var(--line);
-}
-.farePrice {
-  font: 700 22px var(--font-display), sans-serif;
-}
-.farePrice small {
-  display: block;
-  margin-top: 4px;
-  font: 500 12px var(--font-mono), monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-.areas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.areas li {
-  padding: 4px 11px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--bg);
-  font-size: 14px;
-}
-.fareFoot {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px 20px;
-  margin-top: 14px;
-}
 .chargesHead {
-  margin: 64px 0 24px;
+  margin: 0 0 24px;
 }
 .rateCard h3 {
   display: flex;
@@ -1228,7 +1157,9 @@
   .heroVisual {
     margin: 0 auto;
   }
-  .statsGrid {
+  /* Four or more stats go two by two; three or fewer stay on one row. */
+  .statsGrid:has(> :nth-child(4)) {
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .aboutTeaser {
@@ -1337,7 +1268,9 @@
   }
   .facts,
   .factsTwo {
+    grid-auto-flow: row;
     grid-template-columns: minmax(0, 1fr);
+    width: auto;
   }
   .facts div {
     padding: 13px 18px;
@@ -1383,13 +1316,6 @@
   }
   .tip {
     flex-direction: column;
-  }
-  .fareCard {
-    padding: 4px 18px;
-  }
-  .fareRow {
-    grid-template-columns: 1fr;
-    gap: 10px;
   }
   .cancelBar {
     grid-template-columns: 1fr;
