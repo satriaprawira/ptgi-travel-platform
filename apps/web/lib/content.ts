@@ -319,6 +319,18 @@ export const PAYMENT = {
     { name: "PayPay", src: null, width: 0, height: 0 },
   ],
   cash: "Cash payment available upon pick-up",
+  /** The ⓘ next to `cash`: what a customer paying cash on arrival must send in advance. */
+  cashInfo: {
+    label: "Documents needed for cash on arrival",
+    intro:
+      'Passengers opting for the "Cash on Arrival" payment method are required to provide one of the following documents in advance:',
+    documents: [
+      "Japan Residence Card (在留カード/Zairyu Kado)",
+      "Japanese Driver’s License",
+      "Japanese Health Insurance Card",
+    ],
+    outro: "If you do not have any of the documents listed above, you may alternatively provide a copy of your passport.",
+  },
   note: "Tax included — No tipping required",
 };
 

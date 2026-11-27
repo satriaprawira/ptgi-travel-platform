@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import InfoTip from "@/components/InfoTip";
 import Icon from "@/components/site/sections/Icon";
 import { ArrowLink, CtaBand, EXTERNAL, SectionHead } from "@/components/site/sections/Parts";
 import styles from "@/components/site/sections/Sections.module.css";
@@ -196,8 +197,19 @@ export default function HomePage() {
                 <Icon name="cash" />
               </div>
               <div>
-                <b>{PAYMENT.cash}</b>
-                <span>{PAYMENT.note}</span>
+                <div className={styles.payCash}>
+                  <b>{PAYMENT.cash}</b>
+                  <InfoTip label={PAYMENT.cashInfo.label}>
+                    <span className={styles.cashTipText}>{PAYMENT.cashInfo.intro}</span>
+                    <span className={styles.cashTipList}>
+                      {PAYMENT.cashInfo.documents.map((doc) => (
+                        <span key={doc}>{doc}</span>
+                      ))}
+                    </span>
+                    <span className={styles.cashTipText}>{PAYMENT.cashInfo.outro}</span>
+                  </InfoTip>
+                </div>
+                <span className={styles.payNoteText}>{PAYMENT.note}</span>
               </div>
             </div>
           </div>
