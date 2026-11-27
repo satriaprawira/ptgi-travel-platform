@@ -91,7 +91,7 @@ function Charges({ table }: { table: PriceList }) {
         />
         <RateCard
           icon="plus"
-          title="Extras"
+          title="Additional Services"
           rows={table.addOns.map((addOn) => ({ label: addOn.label, values: [addOnShortText(addOn)] }))}
         />
         <RateCard

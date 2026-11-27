@@ -108,16 +108,16 @@ export const PET_PICKUP_TIME_HINT =
  * Stored with each booking, so it's clear which wording a customer agreed to.
  * Change it to the new date whenever TERMS changes.
  */
-export const TERMS_VERSION = "2026-11-14";
+export const TERMS_VERSION = "2026-11-27";
 
 export const TERMS: { title: string; text: string }[] = [
   {
     title: "Reservation",
-    text: "Submitting a request does not guarantee confirmation. We will contact you if further information or clarification is required. Your booking is confirmed only after our confirmation.",
+    text: "After submitting your request, we will review your details and check schedule availability. We will contact you once the review is complete.",
   },
   {
     title: "Payment",
-    text: "Reservations made more than 3 days before pickup must be paid within 3 days of confirmation. Reservations made 3 days or less before pickup must be paid on the invoice issue date. Unpaid reservations may be cancelled.",
+    text: "Please complete the payment by the due date stated on the invoice to secure your booking.",
   },
   {
     title: "Cancellation Policy",
@@ -164,24 +164,18 @@ export interface Office {
   name: string;
   company?: string;
   address: string;
-  /** Part of the address shown in bold, as in the design. */
-  emphasis?: string;
 }
 
-/** Office addresses exactly as written in the footer design. */
+/** Office addresses as supplied by the client. The footer (#contact) and the About page both show these. */
 export const OFFICES = {
-  head: { name: "Head Office", address: "Kugahara 3-13-4 Ota City Tokyo" },
-  osaka: {
-    name: "Osaka Branch",
-    address: "〒592-0002 Osaka, Takaishi, Hagoromo, 1-chōme−11−9 グリーンガーデン羽衣",
-    emphasis: "Osaka, Takaishi, Hagoromo",
-  },
-  narita: { name: "Narita Branch", address: "Chiba, Narita City, Kawakami 245-249" },
+  head: { name: "Head Office", address: "Kugahara 3-13-4 Kugahara, Ota-ku, Tokyo 146-0085" },
+  osaka: { name: "Osaka Branch", address: "1-11-9 Hagoromo, Takaishi, Osaka 592-0002" },
+  narita: { name: "Narita Branch", address: "245-249 Kawakami, Narita, Chiba 287-0244" },
   indonesia: {
     name: "Indonesia Branch",
-    company: "PT. JALAN-JALAN TOURS AND TRAVEL",
-    address:
-      "Gedung gajah Jl. Dr. Saharjo No.111 Blk an, RT.1/RW.1, Tebet Bar., Kec. Tebet, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12810",
+    company: "(Representative Office)",
+    // A no-break space keeps "Blok AN" on one line.
+    address: "Jl. Dr. Saharjo No.111 Blok AN, Jakarta 12810",
   },
 } satisfies Record<string, Office>;
 
@@ -189,7 +183,7 @@ export const CONTACT = {
   /** The WhatsApp number as shown; the link itself opens WHATSAPP_URL. */
   chat: "+81 70 3258 0333",
   fax: "+81 03 6410 4156",
-  emails: ["info@pickupairport.online", "info@jalanjalantravel.co"],
+  emails: ["info@pickupairport.online"],
 };
 
 export const SUPPORT_NOTE = "We are available 24/7 via our website chat and email.";
@@ -258,12 +252,9 @@ export const CTA_BAND = {
 export const HOME = {
   eyebrow: "Airport transfers · Tokyo & Osaka",
   title: "GOAL INTERNATIONAL",
-  titleSub: "AIRPORT PICK-UP/TRANSFER",
-  /** Followed by the partner's name and website. */
-  intro:
-    "Low-Cost Hire Taxi Service. Need a private car? Airport Transfers, Business Trips, and Private Tours — in collaboration with",
+  titleSub: "LOW-COST HIRE TAXI SERVICE",
+  intro: "Need a private car? Airport Transfers, Business Trips, and Private Tours.",
   est: "Est. 2001",
-  points: ["24/7 Support by Chat and Email"],
   photo: {
     src: "/site/photos/hero.jpg",
     width: 328,
@@ -275,14 +266,13 @@ export const HOME = {
 export function homeStats(years: number) {
   return [
     { value: "24/7", label: "Support by chat and email" },
-    { value: "2", label: "Cities: Tokyo and Osaka" },
     { value: String(years), label: "Years of excellent services" },
   ];
 }
 
 export const HOME_SERVICES = {
-  eyebrow: "Services",
-  heading: "Getting to and from the airport, sorted",
+  eyebrow: "Our Advantages",
+  heading: "Enjoy a Hassle-free Journey",
   lead: "Airport transfers are what we do best. When you need a car for something else, we can help with that too.",
   cards: [
     {
@@ -293,14 +283,14 @@ export const HOME_SERVICES = {
     },
     {
       icon: "plane-landing",
-      title: "Pick up/Transfer",
-      text: "We provide 24-hour transfer and pick-up services to and from Tokyo airports: Haneda & Narita and Osaka airports: Kansai & Itami airports.",
+      title: "24/7 Customer Support",
+      text: "We provide 24/7 chat support to assist our customers with their needs.",
       href: "/services#pickup",
     },
     {
       icon: "clock",
-      title: "Hourly car rental",
-      text: "A car and driver for 1 to 11 hours, for business, sightseeing or anything in between.",
+      title: "One-day Trip Service",
+      text: "A car + driver for up to 11 hours, for business, sightseeing or anything in between.",
       href: "/services#hourly",
     },
     {
@@ -315,7 +305,7 @@ export const HOME_SERVICES = {
 
 export const HOME_ABOUT = {
   eyebrow: "About us",
-  heading: "We provide 24-hour transfer and pick-up services to and from airports in Tokyo and Osaka.",
+  heading: "We provide transfer and pick-up services to and from airports in Tokyo and Osaka.",
   text: "Your satisfaction is our priority — we guarantee competitive prices and exceptional service.",
 };
 
@@ -329,6 +319,18 @@ export const PAYMENT = {
     { name: "PayPay", src: null, width: 0, height: 0 },
   ],
   cash: "Cash payment available upon pick-up",
+  /** The ⓘ next to `cash`: what a customer paying cash on arrival must send in advance. */
+  cashInfo: {
+    label: "Documents needed for cash on arrival",
+    intro:
+      'Passengers opting for the "Cash on Arrival" payment method are required to provide one of the following documents in advance:',
+    documents: [
+      "Japan Residence Card (在留カード/Zairyu Kado)",
+      "Japanese Driver’s License",
+      "Japanese Health Insurance Card",
+    ],
+    outro: "If you do not have any of the documents listed above, you may alternatively provide a copy of your passport.",
+  },
   note: "Tax included — No tipping required",
 };
 
@@ -392,7 +394,7 @@ export const SERVICES = [
     id: "drop-off",
     icon: "plane-takeoff",
     title: "Hotel-to-Destination Transfers",
-    text: "We pick you up at your hotel or home and drive you to Haneda or Narita, so you arrive relaxed and on time.",
+    text: "We pick you up at your hotel or home and drive you to your designated location, so you arrive relaxed and on time.",
     points: [
       "Pickup at your address at the time you choose",
       "The same area fares as airport pickups",
@@ -442,7 +444,7 @@ export const SERVICES = [
 }[];
 
 export const EXTRAS_SECTION = {
-  eyebrow: "Extras",
+  eyebrow: "Additional Services",
   heading: "Add what you need",
   lead: "Choose extras in the reservation form.",
   petBefore: "Travelling with a pet? Read our",
@@ -456,7 +458,7 @@ export const ABOUT_PAGE = {
   eyebrow: "About us",
   title: "About Goal International",
   intro:
-    "We're a Tokyo transport company based in Ota City. Our drivers take travellers between Haneda or Narita and Tokyo, Kawasaki and Yokohama.",
+    "We're a hire taxi company based in Japan. Our drivers provide transportation services throughout Tokyo, Osaka, and their surrounding areas.",
   facts: [
     { label: "Established", value: ESTABLISHED.text },
     { label: "Capital", value: CAPITAL },
@@ -481,12 +483,12 @@ export const VALUES = [
 export const FLEET_SECTION = {
   eyebrow: "Our fleet",
   heading: "We offer a variety of vehicles",
-  lead: "From everyday cars to the Toyota Alphard and roomy vans for groups. Extra costs are added to the area fare.",
+  lead: "From everyday cars to the roomy vans for groups. Extra costs are added to the area fare.",
 };
 
 /**
  * One card per fleet class (vehicle_classes.code). Seats, suitcases and extra costs come from the API.
- * text: null until the client describes the car (Alphard 2.0 / 3.0 / 4.0).
+ * text: null until the client describes the car.
  */
 export const FLEET: { classCode: string; name: string; models: string; text: string | null; photo: Photo }[] = [
   {
@@ -497,18 +499,11 @@ export const FLEET: { classCode: string; name: string; models: string; text: str
     photo: { src: "/site/fleet/standard.jpg", width: 329, height: 373, alt: "Black Nissan Serena", position: "50% 62%" },
   },
   {
-    classCode: "alphard-2",
-    name: "Alphard 2.0",
+    classCode: "medium",
+    name: "Medium Car",
     models: "Toyota Alphard",
     text: null,
-    photo: { src: "/site/fleet/alphard-2.jpg", width: 900, height: 579, alt: "White Toyota Alphard 2.0, seen from the back", position: "50% 60%" },
-  },
-  {
-    classCode: "alphard-3",
-    name: "Alphard 3.0",
-    models: "Toyota Alphard",
-    text: null,
-    photo: { src: "/site/fleet/alphard-3.jpg", width: 568, height: 522, alt: "White Toyota Alphard 3.0, seen from the front", position: "50% 62%" },
+    photo: { src: "/site/fleet/medium.jpg", width: 568, height: 522, alt: "White Toyota Alphard, seen from the front", position: "50% 62%" },
   },
   {
     classCode: "alphard-4",
@@ -521,7 +516,7 @@ export const FLEET: { classCode: string; name: string; models: string; text: str
     classCode: "grand-cabin",
     name: "Grand Cabin",
     models: "Toyota HiAce Grand Cabin",
-    text: "Room for bigger groups and bulky luggage like golf bags and surfboards.",
+    text: "Room for bigger groups and bulky luggage like golf bags and snowboards.",
     photo: { src: "/site/fleet/grand-cabin.jpg", width: 900, height: 586, alt: "Silver Toyota HiAce Grand Cabin", position: "50% 55%" },
   },
   {
@@ -555,7 +550,7 @@ export const TEAM: { name: string; role: string; photo: Photo }[] = [
 
 export const HOW_TO_BOOK = {
   eyebrow: "How to book",
-  title: "Book your pickup in five steps",
+  title: "Book your pickup in five stages",
   intro:
     "The reservation form takes a few minutes. You'll see an estimated price as you go, and you don't pay anything until we confirm your booking.",
   start: "Start booking",
@@ -618,8 +613,8 @@ export const BOOKING_STEPS: {
       "How you'll pay: card, PayPal, bank transfer, or cash on arrival (+¥1,000).",
     ],
     alt: "Step 3 of the reservation form: Vehicle and payment",
-    wide: { src: "/how-to-book/step-3-wide.jpg", width: 1038, height: 1232, dots: [[1, 0, 13.8], [2, 0, 88.2]] },
-    narrow: { src: "/how-to-book/step-3-narrow.jpg", width: 700, height: 1810, dots: [[1, 0, 11.8], [2, 0, 82.7]] },
+    wide: { src: "/how-to-book/step-3-wide.jpg", width: 1038, height: 887, dots: [[1, 0, 19.1], [2, 0, 83.6]] },
+    narrow: { src: "/how-to-book/step-3-narrow.jpg", width: 700, height: 1320, dots: [[1, 0, 16.2], [2, 0, 76.3]] },
     ticketTip: true,
   },
   {
@@ -627,7 +622,7 @@ export const BOOKING_STEPS: {
     text: "How we reach you, and anything else you need.",
     callouts: [
       "Email and phone number: we use them to confirm your booking.",
-      "Extras: baby seat (the first one is free), pickup at the lobby, wheelchair.",
+      "Extras: baby seat (the first one is free), pickup at arrival lobby, wheelchair.",
       "Anything else, including details of a pet travelling with you.",
     ],
     alt: "Step 4 of the reservation form: Contact and extras",

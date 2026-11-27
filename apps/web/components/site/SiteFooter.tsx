@@ -14,9 +14,9 @@ import styles from "./Site.module.css";
 
 const EXTERNAL = { target: "_blank", rel: "noopener noreferrer" } as const;
 
-/** Keeps numbers like "3-13-4" on one line instead of breaking at a hyphen. */
-function keepNumbersTogether(text: string) {
-  return text.split(/(\d+(?:-\d+)+)/).map((part, i) =>
+/** Keeps "3-13-4" or "Ota-ku" on one line instead of breaking at a hyphen. */
+function keepHyphenatedTogether(text: string) {
+  return text.split(/(\w+(?:-\w+)+)/).map((part, i) =>
     i % 2 ? (
       <span key={i} className={styles.nowrap}>
         {part}
@@ -27,17 +27,8 @@ function keepNumbersTogether(text: string) {
   );
 }
 
-function Address({ office }: { office: Office }) {
-  if (!office.emphasis) return <>{keepNumbersTogether(office.address)}</>;
-  const [before, after] = office.address.split(office.emphasis);
-  return (
-    <>
-      {keepNumbersTogether(before)}
-      <strong>{office.emphasis}</strong>
-      {keepNumbersTogether(after)}
-    </>
-  );
-}
+/** All four offices in one row, in this order (two by two on tablets, one under another on phones). */
+const FOOTER_OFFICES: Office[] = [OFFICES.head, OFFICES.osaka, OFFICES.narita, OFFICES.indonesia];
 
 const SOCIAL_ICONS: Record<(typeof SOCIAL_LINKS)[number]["name"], ReactNode> = {
   Instagram: (
@@ -81,73 +72,60 @@ const SOCIAL_ICONS: Record<(typeof SOCIAL_LINKS)[number]["name"], ReactNode> = {
 };
 
 /**
- * Customer site footer: offices, contact details, customer support, social links and copyright. The menu's
- * Contact link scrolls here (#contact).
+ * Customer site footer, in two bands: the offices on dark, then contact details, customer support, social links
+ * and copyright on yellow. The menu's Contact link scrolls here (#contact).
  */
 export default function SiteFooter() {
   return (
     <footer id="contact" className={styles.footer}>
-      <h2 className={styles.footerTitle}>{COMPANY_NAME}</h2>
-
-      <div className={styles.offices}>
-        <div className={styles.office}>
-          <h3>{OFFICES.head.name}</h3>
-          <p>
-            <Address office={OFFICES.head} />
-          </p>
-          <h4>{OFFICES.osaka.name}</h4>
-          <p>
-            <Address office={OFFICES.osaka} />
-          </p>
-        </div>
-        <div className={`${styles.office} ${styles.officeCentered}`}>
-          <h3>{OFFICES.narita.name}</h3>
-          <p>
-            <Address office={OFFICES.narita} />
-          </p>
-        </div>
-        <div className={styles.office}>
-          <h3>{OFFICES.indonesia.name}</h3>
-          <p className={styles.company}>{OFFICES.indonesia.company}</p>
-          <p>
-            <Address office={OFFICES.indonesia} />
-          </p>
+      <div className={styles.footerOffices}>
+        <h2 className={styles.footerTitle}>{COMPANY_NAME}</h2>
+        <div className={styles.offices}>
+          {FOOTER_OFFICES.map((office) => (
+            <div key={office.name} className={styles.office}>
+              <h3>{office.name}</h3>
+              {office.company && <p className={styles.company}>{office.company}</p>}
+              <p>{keepHyphenatedTogether(office.address)}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      <p className={styles.contactLines}>
-        Chat Only&nbsp; :{" "}
-        <a href={WHATSAPP_URL} {...EXTERNAL}>
-          {CONTACT.chat}
-        </a>
-        <br />
-        Fax : {CONTACT.fax}
-      </p>
+      <div className={styles.footerContact}>
+        <p className={styles.contactLines}>
+          Chat Only&nbsp; :{" "}
+          <a href={WHATSAPP_URL} {...EXTERNAL}>
+            {CONTACT.chat}
+          </a>
+          <br />
+          Fax : {CONTACT.fax}
+        </p>
 
-      <h3 className={styles.support}>Customer Support</h3>
-      <p className={styles.supportNote}>{SUPPORT_NOTE}</p>
-      <ul className={styles.emails}>
-        {CONTACT.emails.map((email) => (
-          <li key={email}>
-            Email : <a href={`mailto:${email}`}>{email}</a>
-          </li>
-        ))}
-      </ul>
-      <a className={styles.liveChat} href={WHATSAPP_URL} {...EXTERNAL}>
-        {LIVE_CHAT_NOTE}
-      </a>
-
-      <div className={styles.footerBottom}>
-        <ul className={styles.socials}>
-          {SOCIAL_LINKS.map((link) => (
-            <li key={link.name}>
-              <a href={link.href} {...EXTERNAL} aria-label={link.name} title={link.name}>
-                {SOCIAL_ICONS[link.name]}
-              </a>
+        <h3 className={styles.support}>Customer Support</h3>
+        <p className={styles.supportNote}>{SUPPORT_NOTE}</p>
+        <ul className={styles.emails}>
+          {CONTACT.emails.map((email) => (
+            <li key={email}>
+              Email : <a href={`mailto:${email}`}>{email}</a>
             </li>
           ))}
         </ul>
-        <p className={styles.copyright}>{COPYRIGHT}</p>
+        <a className={styles.liveChat} href={WHATSAPP_URL} {...EXTERNAL}>
+          {LIVE_CHAT_NOTE}
+        </a>
+
+        <div className={styles.footerBottom}>
+          <ul className={styles.socials}>
+            {SOCIAL_LINKS.map((link) => (
+              <li key={link.name}>
+                <a href={link.href} {...EXTERNAL} aria-label={link.name} title={link.name}>
+                  {SOCIAL_ICONS[link.name]}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.copyright}>{COPYRIGHT}</p>
+        </div>
       </div>
     </footer>
   );

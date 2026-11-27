@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import InfoTip from "@/components/InfoTip";
 import Icon from "@/components/site/sections/Icon";
 import { ArrowLink, CtaBand, EXTERNAL, SectionHead } from "@/components/site/sections/Parts";
 import styles from "@/components/site/sections/Sections.module.css";
@@ -13,7 +14,6 @@ import {
   HOME,
   HOME_ABOUT,
   HOME_SERVICES,
-  PARTNER,
   PAYMENT,
   QUOTATION_HREF,
   SITE_URL,
@@ -88,12 +88,8 @@ export default function HomePage() {
             <h1 className={`${styles.h1} ${styles.heroTitle}`} id="home-title">
               {HOME.title} <span className={styles.heroTitleSub}>{HOME.titleSub}</span>
             </h1>
-            <p className={`${styles.lead} ${styles.heroLead}`}>
-              {HOME.intro} {PARTNER.name} (
-              <a href={PARTNER.url} {...EXTERNAL}>
-                {PARTNER.site}
-              </a>
-              )
+            <p className={styles.lead}>
+              {HOME.intro}
               <br />
               <span className={styles.est}>{HOME.est}</span>
             </p>
@@ -105,14 +101,6 @@ export default function HomePage() {
                 Chat on WhatsApp
               </a>
             </div>
-            <ul className={styles.heroNote}>
-              {HOME.points.map((point) => (
-                <li key={point}>
-                  <Icon name="check" />
-                  {point}
-                </li>
-              ))}
-            </ul>
           </div>
           <div className={styles.heroVisual}>
             <div className={`${styles.photo} ${styles.heroPhoto}`}>
@@ -209,8 +197,19 @@ export default function HomePage() {
                 <Icon name="cash" />
               </div>
               <div>
-                <b>{PAYMENT.cash}</b>
-                <span>{PAYMENT.note}</span>
+                <div className={styles.payCash}>
+                  <b>{PAYMENT.cash}</b>
+                  <InfoTip label={PAYMENT.cashInfo.label}>
+                    <span className={styles.cashTipText}>{PAYMENT.cashInfo.intro}</span>
+                    <span className={styles.cashTipList}>
+                      {PAYMENT.cashInfo.documents.map((doc) => (
+                        <span key={doc}>{doc}</span>
+                      ))}
+                    </span>
+                    <span className={styles.cashTipText}>{PAYMENT.cashInfo.outro}</span>
+                  </InfoTip>
+                </div>
+                <span className={styles.payNoteText}>{PAYMENT.note}</span>
               </div>
             </div>
           </div>

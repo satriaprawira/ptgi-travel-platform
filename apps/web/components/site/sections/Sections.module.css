@@ -314,16 +314,6 @@
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
-.heroLead a {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-color: #c5ccd8;
-  text-underline-offset: 3px;
-}
-.heroLead a:hover {
-  color: var(--accent);
-  text-decoration-color: currentColor;
-}
 .est {
   display: inline-block;
   margin-top: 10px;
@@ -335,26 +325,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
-}
-.heroNote {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-.heroNote li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.heroNote svg {
-  width: 16px;
-  height: 16px;
-  color: var(--accent);
 }
 .heroVisual {
   position: relative;
@@ -490,15 +460,39 @@
   width: 20px;
   height: 20px;
 }
-.payNote b {
-  display: block;
+/* The ⓘ follows the last word, also when the line wraps on a phone. */
+.payCash b {
+  margin-right: 3px;
   font: 600 15.5px var(--font-display), sans-serif;
 }
-.payNote span {
+.payCash > :global(.info-tip) {
+  vertical-align: -3px;
+}
+.payNoteText {
   display: block;
   margin-top: 2px;
   font-size: 13.5px;
   color: var(--ink-soft);
+}
+/* The cash ⓘ bubble: intro, the list of documents, and the passport sentence. */
+.cashTipText {
+  display: block;
+}
+.cashTipList {
+  display: block;
+  margin: 6px 0;
+}
+.cashTipList > span {
+  position: relative;
+  display: block;
+  padding-left: 14px;
+  /* Keeps 在留カード in one piece when the line wraps. */
+  word-break: keep-all;
+}
+.cashTipList > span::before {
+  content: "•";
+  position: absolute;
+  left: 3px;
 }
 
 /* ---------- Home: customers and testimonials ---------- */
