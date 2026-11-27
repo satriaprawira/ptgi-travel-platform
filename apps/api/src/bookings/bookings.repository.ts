@@ -183,6 +183,8 @@ export interface NewBooking {
   /** 'new' takes a hold; 'waitlisted' is saved without one. */
   status: 'new' | 'waitlisted';
   vehicleClassId: string;
+  /** Car rentals only: RENTAL_HOURS. Null for airport transfers. */
+  rentalHours: number | null;
   pickupAt: Date;
   holdUntil: Date;
   bufferMinutes: number;
@@ -519,7 +521,7 @@ export class BookingsRepository {
       booking.vehicleLabel,
       dto.tripType ?? 'airport',
       dto.dropoffAddress ?? null,
-      dto.rentalHours ?? null,
+      booking.rentalHours,
     ]);
     return rows[0].id;
   }

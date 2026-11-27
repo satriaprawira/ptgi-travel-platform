@@ -1,4 +1,5 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { RENTAL_HOURS } from '../bookings/hold.js';
 import { PaymentMethodsRepository } from '../payment-methods/payment-methods.repository.js';
 import { VehicleTypesRepository } from '../vehicle-types/vehicle-types.repository.js';
 import type { AddOnSelectionDto, CreateQuoteDto } from './dto/create-quote.dto.js';
@@ -57,7 +58,7 @@ export class PricingService {
     if (!payment) throw new UnprocessableEntityException('paymentMethodId does not match an available payment method');
     return calculateRentalQuote({
       vehicleName: vehicleClass.name,
-      hours: dto.rentalHours,
+      hours: RENTAL_HOURS,
       payment: { label: payment.label, feeJpy: payment.feeJpy },
       addOns: selectedAddOns,
     });

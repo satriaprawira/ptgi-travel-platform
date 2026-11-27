@@ -6,15 +6,12 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
-  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
-  Max,
   MaxLength,
-  Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -73,12 +70,6 @@ export class CreateBookingDto {
   @IsNotEmpty()
   @MaxLength(300)
   dropoffAddress?: string;
-
-  @ValidateIf(isOtherTrip)
-  @IsInt()
-  @Min(1)
-  @Max(12)
-  rentalHours?: number;
 
   // ---- Both
 
