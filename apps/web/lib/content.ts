@@ -189,7 +189,7 @@ export const CONTACT = {
   /** The WhatsApp number as shown; the link itself opens WHATSAPP_URL. */
   chat: "+81 70 3258 0333",
   fax: "+81 03 6410 4156",
-  emails: ["info@pickupairport.online", "info@jalanjalantravel.co"],
+  emails: ["info@pickupairport.online"],
 };
 
 export const SUPPORT_NOTE = "We are available 24/7 via our website chat and email.";

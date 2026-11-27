@@ -87,12 +87,19 @@
   font-weight: 600;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- Footer: the offices on dark, then the contact details on yellow (like the menu bar under the header) ---------- */
 .footer {
   background: var(--site-dark);
   color: #fff;
   text-align: center;
+}
+.footerOffices {
+  padding: 40px 16px 44px;
+}
+.footerContact {
   padding: 40px 16px 26px;
+  background: var(--site-yellow);
+  color: var(--site-dark);
 }
 .footer a {
   color: inherit;
@@ -107,6 +114,9 @@
   outline-offset: 3px;
   border-radius: 3px;
 }
+.footerContact a:focus-visible {
+  outline-color: var(--site-dark);
+}
 .footerTitle {
   margin: 0 0 22px;
   font-family: var(--font-display), sans-serif;
@@ -117,53 +127,38 @@
 }
 .offices,
 .footerBottom {
-  max-width: min(1220px, max(780px, 68vw));
+  max-width: min(1220px, max(860px, 80vw));
   margin-left: auto;
   margin-right: auto;
 }
 .offices {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px 40px;
-  text-align: left;
-}
-.office h3,
-.office h4 {
-  font-family: var(--font-display), sans-serif;
-  font-weight: 500;
-  text-transform: uppercase;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px 32px;
 }
 .office h3 {
-  margin: 0 0 22px;
-  font-size: 24px;
+  margin: 0 0 14px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 22px;
+  font-weight: 500;
   letter-spacing: 0.01em;
-  text-align: center;
-}
-.office h4 {
-  margin: 28px 0 4px;
-  font-size: 20px;
+  text-transform: uppercase;
 }
 .office p {
   margin: 0 0 10px;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.7;
-}
-.office strong {
-  font-weight: 600;
-}
-.officeCentered p {
-  text-align: center;
 }
 .office .company {
   font-weight: 600;
   font-size: 15px;
-  margin-bottom: 22px;
+  margin-bottom: 4px;
 }
 .nowrap {
   white-space: nowrap;
 }
 .contactLines {
-  margin: 44px 0 0;
+  margin: 0;
   font-size: 17px;
   line-height: 1.75;
 }
@@ -172,7 +167,7 @@
   font-family: var(--font-display), sans-serif;
   font-size: 26px;
   font-weight: 500;
-  color: var(--site-heading-yellow);
+  color: var(--site-nav-ink-strong);
   text-transform: uppercase;
 }
 .supportNote {
@@ -190,7 +185,9 @@
   display: inline-block;
   margin-top: 18px;
   font-size: 18px;
-  color: var(--site-heading-yellow);
+  color: var(--site-nav-ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .footerBottom {
   position: relative;
@@ -213,20 +210,29 @@
   display: inline-flex;
   width: 48px;
   height: 48px;
-  color: #fff;
+  color: var(--site-dark);
 }
 .socials svg {
   width: 100%;
   height: 100%;
 }
+/* The Facebook and Threads letters are cut out in the band's colour. */
 .socialCutout {
-  fill: var(--site-dark);
+  fill: var(--site-yellow);
 }
 .copyright {
   margin: 0;
   padding-top: 18px;
   font-size: 15px;
-  color: var(--site-muted);
+  color: var(--site-nav-ink);
+}
+
+/* ---------- Tablets: the offices two by two ---------- */
+@media (max-width: 1023px) {
+  .offices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 32px;
+  }
 }
 
 /* ---------- Phones and small tablets: ☰ menu, stacked footer ---------- */
@@ -271,20 +277,8 @@
     font-size: 17px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
-  .offices {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
   .office h3 {
     margin-bottom: 10px;
-    font-size: 22px;
-  }
-  .office h4 {
-    margin-top: 18px;
-    font-size: 19px;
-  }
-  .office p {
-    font-size: 16px;
   }
   .support {
     font-size: 23px;
@@ -292,8 +286,12 @@
   .supportNote {
     font-size: 17px;
   }
+  .footerOffices {
+    padding-bottom: 36px;
+  }
   /* Room for the floating WhatsApp button, so it doesn't cover the copyright. */
-  .footer {
+  .footerContact {
+    padding-top: 34px;
     padding-bottom: 96px;
   }
   .footerBottom {
@@ -309,5 +307,13 @@
   }
   .copyright {
     padding-top: 0;
+  }
+}
+
+/* ---------- Phones: the offices one under another ---------- */
+@media (max-width: 767px) {
+  .offices {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 }
