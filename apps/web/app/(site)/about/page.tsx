@@ -17,9 +17,9 @@ export const metadata = pageMetadata({
   path: "/about",
 });
 
-/** Keeps numbers like "245-249" on one line instead of breaking at a hyphen (as in the footer). */
-function keepNumbersTogether(text: string) {
-  return text.split(/(\d+(?:-\d+)+)/).map((part, i) =>
+/** Keeps "245-249" or "Ota-ku" on one line instead of breaking at a hyphen (as in the footer). */
+function keepHyphenatedTogether(text: string) {
+  return text.split(/(\w+(?:-\w+)+)/).map((part, i) =>
     i % 2 ? (
       <span key={i} className={styles.nowrap}>
         {part}
@@ -27,18 +27,6 @@ function keepNumbersTogether(text: string) {
     ) : (
       part
     ),
-  );
-}
-
-function OfficeAddress({ office }: { office: Office }) {
-  if (!office.emphasis) return <>{keepNumbersTogether(office.address)}</>;
-  const [before, after] = office.address.split(office.emphasis);
-  return (
-    <>
-      {keepNumbersTogether(before)}
-      <strong>{office.emphasis}</strong>
-      {keepNumbersTogether(after)}
-    </>
   );
 }
 
@@ -101,9 +89,7 @@ export default async function AboutPage() {
               <div key={office.name} className={`${styles.card} ${styles.officeCard}`}>
                 <h3>{office.name}</h3>
                 {office.company && <p className={styles.company}>{office.company}</p>}
-                <p>
-                  <OfficeAddress office={office} />
-                </p>
+                <p>{keepHyphenatedTogether(office.address)}</p>
               </div>
             ))}
           </div>

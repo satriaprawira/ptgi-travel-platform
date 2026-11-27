@@ -13,7 +13,6 @@ import {
   HOME,
   HOME_ABOUT,
   HOME_SERVICES,
-  PARTNER,
   PAYMENT,
   QUOTATION_HREF,
   SITE_URL,
@@ -88,12 +87,8 @@ export default function HomePage() {
             <h1 className={`${styles.h1} ${styles.heroTitle}`} id="home-title">
               {HOME.title} <span className={styles.heroTitleSub}>{HOME.titleSub}</span>
             </h1>
-            <p className={`${styles.lead} ${styles.heroLead}`}>
-              {HOME.intro} {PARTNER.name} (
-              <a href={PARTNER.url} {...EXTERNAL}>
-                {PARTNER.site}
-              </a>
-              )
+            <p className={styles.lead}>
+              {HOME.intro}
               <br />
               <span className={styles.est}>{HOME.est}</span>
             </p>
@@ -105,14 +100,6 @@ export default function HomePage() {
                 Chat on WhatsApp
               </a>
             </div>
-            <ul className={styles.heroNote}>
-              {HOME.points.map((point) => (
-                <li key={point}>
-                  <Icon name="check" />
-                  {point}
-                </li>
-              ))}
-            </ul>
           </div>
           <div className={styles.heroVisual}>
             <div className={`${styles.photo} ${styles.heroPhoto}`}>

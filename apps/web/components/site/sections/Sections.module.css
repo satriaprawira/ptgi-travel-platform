@@ -314,16 +314,6 @@
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
-.heroLead a {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-color: #c5ccd8;
-  text-underline-offset: 3px;
-}
-.heroLead a:hover {
-  color: var(--accent);
-  text-decoration-color: currentColor;
-}
 .est {
   display: inline-block;
   margin-top: 10px;
@@ -335,26 +325,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
-}
-.heroNote {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-.heroNote li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.heroNote svg {
-  width: 16px;
-  height: 16px;
-  color: var(--accent);
 }
 .heroVisual {
   position: relative;

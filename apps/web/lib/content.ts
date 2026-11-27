@@ -108,16 +108,16 @@ export const PET_PICKUP_TIME_HINT =
  * Stored with each booking, so it's clear which wording a customer agreed to.
  * Change it to the new date whenever TERMS changes.
  */
-export const TERMS_VERSION = "2026-11-14";
+export const TERMS_VERSION = "2026-11-27";
 
 export const TERMS: { title: string; text: string }[] = [
   {
     title: "Reservation",
-    text: "Submitting a request does not guarantee confirmation. We will contact you if further information or clarification is required. Your booking is confirmed only after our confirmation.",
+    text: "After submitting your request, we will review your details and check schedule availability. We will contact you once the review is complete.",
   },
   {
     title: "Payment",
-    text: "Reservations made more than 3 days before pickup must be paid within 3 days of confirmation. Reservations made 3 days or less before pickup must be paid on the invoice issue date. Unpaid reservations may be cancelled.",
+    text: "Please complete the payment by the due date stated on the invoice to secure your booking.",
   },
   {
     title: "Cancellation Policy",
@@ -164,24 +164,18 @@ export interface Office {
   name: string;
   company?: string;
   address: string;
-  /** Part of the address shown in bold, as in the design. */
-  emphasis?: string;
 }
 
-/** Office addresses exactly as written in the footer design. */
+/** Office addresses as supplied by the client. The footer (#contact) and the About page both show these. */
 export const OFFICES = {
-  head: { name: "Head Office", address: "Kugahara 3-13-4 Ota City Tokyo" },
-  osaka: {
-    name: "Osaka Branch",
-    address: "〒592-0002 Osaka, Takaishi, Hagoromo, 1-chōme−11−9 グリーンガーデン羽衣",
-    emphasis: "Osaka, Takaishi, Hagoromo",
-  },
-  narita: { name: "Narita Branch", address: "Chiba, Narita City, Kawakami 245-249" },
+  head: { name: "Head Office", address: "Kugahara 3-13-4 Kugahara, Ota-ku, Tokyo 146-0085" },
+  osaka: { name: "Osaka Branch", address: "1-11-9 Hagoromo, Takaishi, Osaka 592-0002" },
+  narita: { name: "Narita Branch", address: "245-249 Kawakami, Narita, Chiba 287-0244" },
   indonesia: {
     name: "Indonesia Branch",
-    company: "PT. JALAN-JALAN TOURS AND TRAVEL",
-    address:
-      "Gedung gajah Jl. Dr. Saharjo No.111 Blk an, RT.1/RW.1, Tebet Bar., Kec. Tebet, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12810",
+    company: "(Representative Office)",
+    // A no-break space keeps "Blok AN" on one line.
+    address: "Jl. Dr. Saharjo No.111 Blok AN, Jakarta 12810",
   },
 } satisfies Record<string, Office>;
 
@@ -258,12 +252,9 @@ export const CTA_BAND = {
 export const HOME = {
   eyebrow: "Airport transfers · Tokyo & Osaka",
   title: "GOAL INTERNATIONAL",
-  titleSub: "AIRPORT PICK-UP/TRANSFER",
-  /** Followed by the partner's name and website. */
-  intro:
-    "Low-Cost Hire Taxi Service. Need a private car? Airport Transfers, Business Trips, and Private Tours — in collaboration with",
+  titleSub: "LOW-COST HIRE TAXI SERVICE",
+  intro: "Need a private car? Airport Transfers, Business Trips, and Private Tours.",
   est: "Est. 2001",
-  points: ["24/7 Support by Chat and Email"],
   photo: {
     src: "/site/photos/hero.jpg",
     width: 328,
@@ -275,14 +266,13 @@ export const HOME = {
 export function homeStats(years: number) {
   return [
     { value: "24/7", label: "Support by chat and email" },
-    { value: "2", label: "Cities: Tokyo and Osaka" },
     { value: String(years), label: "Years of excellent services" },
   ];
 }
 
 export const HOME_SERVICES = {
-  eyebrow: "Services",
-  heading: "Getting to and from the airport, sorted",
+  eyebrow: "Our Advantages",
+  heading: "Enjoy a Hassle-free Journey",
   lead: "Airport transfers are what we do best. When you need a car for something else, we can help with that too.",
   cards: [
     {
@@ -293,14 +283,14 @@ export const HOME_SERVICES = {
     },
     {
       icon: "plane-landing",
-      title: "Pick up/Transfer",
-      text: "We provide 24-hour transfer and pick-up services to and from Tokyo airports: Haneda & Narita and Osaka airports: Kansai & Itami airports.",
+      title: "24/7 Customer Support",
+      text: "We provide 24/7 chat support to assist our customers with their needs.",
       href: "/services#pickup",
     },
     {
       icon: "clock",
-      title: "Hourly car rental",
-      text: "A car and driver for 1 to 11 hours, for business, sightseeing or anything in between.",
+      title: "One-day Trip Service",
+      text: "A car + driver for up to 11 hours, for business, sightseeing or anything in between.",
       href: "/services#hourly",
     },
     {
@@ -315,7 +305,7 @@ export const HOME_SERVICES = {
 
 export const HOME_ABOUT = {
   eyebrow: "About us",
-  heading: "We provide 24-hour transfer and pick-up services to and from airports in Tokyo and Osaka.",
+  heading: "We provide transfer and pick-up services to and from airports in Tokyo and Osaka.",
   text: "Your satisfaction is our priority — we guarantee competitive prices and exceptional service.",
 };
 
@@ -392,7 +382,7 @@ export const SERVICES = [
     id: "drop-off",
     icon: "plane-takeoff",
     title: "Hotel-to-Destination Transfers",
-    text: "We pick you up at your hotel or home and drive you to Haneda or Narita, so you arrive relaxed and on time.",
+    text: "We pick you up at your hotel or home and drive you to your designated location, so you arrive relaxed and on time.",
     points: [
       "Pickup at your address at the time you choose",
       "The same area fares as airport pickups",
@@ -442,7 +432,7 @@ export const SERVICES = [
 }[];
 
 export const EXTRAS_SECTION = {
-  eyebrow: "Extras",
+  eyebrow: "Additional Services",
   heading: "Add what you need",
   lead: "Choose extras in the reservation form.",
   petBefore: "Travelling with a pet? Read our",
@@ -456,7 +446,7 @@ export const ABOUT_PAGE = {
   eyebrow: "About us",
   title: "About Goal International",
   intro:
-    "We're a Tokyo transport company based in Ota City. Our drivers take travellers between Haneda or Narita and Tokyo, Kawasaki and Yokohama.",
+    "We're a hire taxi company based in Japan. Our drivers provide transportation services throughout Tokyo, Osaka, and their surrounding areas.",
   facts: [
     { label: "Established", value: ESTABLISHED.text },
     { label: "Capital", value: CAPITAL },
@@ -481,7 +471,7 @@ export const VALUES = [
 export const FLEET_SECTION = {
   eyebrow: "Our fleet",
   heading: "We offer a variety of vehicles",
-  lead: "From everyday cars to the Toyota Alphard and roomy vans for groups. Extra costs are added to the area fare.",
+  lead: "From everyday cars to the roomy vans for groups. Extra costs are added to the area fare.",
 };
 
 /**
@@ -521,7 +511,7 @@ export const FLEET: { classCode: string; name: string; models: string; text: str
     classCode: "grand-cabin",
     name: "Grand Cabin",
     models: "Toyota HiAce Grand Cabin",
-    text: "Room for bigger groups and bulky luggage like golf bags and surfboards.",
+    text: "Room for bigger groups and bulky luggage like golf bags and snowboards.",
     photo: { src: "/site/fleet/grand-cabin.jpg", width: 900, height: 586, alt: "Silver Toyota HiAce Grand Cabin", position: "50% 55%" },
   },
   {
@@ -555,7 +545,7 @@ export const TEAM: { name: string; role: string; photo: Photo }[] = [
 
 export const HOW_TO_BOOK = {
   eyebrow: "How to book",
-  title: "Book your pickup in five steps",
+  title: "Book your pickup in five stages",
   intro:
     "The reservation form takes a few minutes. You'll see an estimated price as you go, and you don't pay anything until we confirm your booking.",
   start: "Start booking",
