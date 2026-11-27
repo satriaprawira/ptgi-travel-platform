@@ -488,7 +488,7 @@ export const FLEET_SECTION = {
 
 /**
  * One card per fleet class (vehicle_classes.code). Seats, suitcases and extra costs come from the API.
- * text: null until the client describes the car (Alphard 2.0 / 3.0 / 4.0).
+ * text: null until the client describes the car.
  */
 export const FLEET: { classCode: string; name: string; models: string; text: string | null; photo: Photo }[] = [
   {
@@ -499,18 +499,11 @@ export const FLEET: { classCode: string; name: string; models: string; text: str
     photo: { src: "/site/fleet/standard.jpg", width: 329, height: 373, alt: "Black Nissan Serena", position: "50% 62%" },
   },
   {
-    classCode: "alphard-2",
-    name: "Alphard 2.0",
+    classCode: "medium",
+    name: "Medium Car",
     models: "Toyota Alphard",
     text: null,
-    photo: { src: "/site/fleet/alphard-2.jpg", width: 900, height: 579, alt: "White Toyota Alphard 2.0, seen from the back", position: "50% 60%" },
-  },
-  {
-    classCode: "alphard-3",
-    name: "Alphard 3.0",
-    models: "Toyota Alphard",
-    text: null,
-    photo: { src: "/site/fleet/alphard-3.jpg", width: 568, height: 522, alt: "White Toyota Alphard 3.0, seen from the front", position: "50% 62%" },
+    photo: { src: "/site/fleet/medium.jpg", width: 568, height: 522, alt: "White Toyota Alphard, seen from the front", position: "50% 62%" },
   },
   {
     classCode: "alphard-4",
@@ -620,8 +613,8 @@ export const BOOKING_STEPS: {
       "How you'll pay: card, PayPal, bank transfer, or cash on arrival (+¥1,000).",
     ],
     alt: "Step 3 of the reservation form: Vehicle and payment",
-    wide: { src: "/how-to-book/step-3-wide.jpg", width: 1038, height: 1232, dots: [[1, 0, 13.8], [2, 0, 88.2]] },
-    narrow: { src: "/how-to-book/step-3-narrow.jpg", width: 700, height: 1810, dots: [[1, 0, 11.8], [2, 0, 82.7]] },
+    wide: { src: "/how-to-book/step-3-wide.jpg", width: 1038, height: 887, dots: [[1, 0, 19.1], [2, 0, 83.6]] },
+    narrow: { src: "/how-to-book/step-3-narrow.jpg", width: 700, height: 1320, dots: [[1, 0, 16.2], [2, 0, 76.3]] },
     ticketTip: true,
   },
   {
@@ -629,7 +622,7 @@ export const BOOKING_STEPS: {
     text: "How we reach you, and anything else you need.",
     callouts: [
       "Email and phone number: we use them to confirm your booking.",
-      "Extras: baby seat (the first one is free), pickup at the lobby, wheelchair.",
+      "Extras: baby seat (the first one is free), pickup at arrival lobby, wheelchair.",
       "Anything else, including details of a pet travelling with you.",
     ],
     alt: "Step 4 of the reservation form: Contact and extras",
