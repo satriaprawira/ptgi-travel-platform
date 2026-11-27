@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOLD_HOURS, holdUntil, tripEnd } from './hold.js';
+import { HOLD_HOURS, RENTAL_HOURS, holdUntil, tripEnd } from './hold.js';
 
 const pickup = new Date('2026-11-20T01:30:00Z'); // 10:30 in Tokyo
 
@@ -14,8 +14,13 @@ describe('holdUntil', () => {
     expect(holdUntil(pickup, 0).toISOString()).toBe('2026-11-20T04:30:00.000Z');
   });
 
-  it("holds a car rental for the hours asked for, plus the buffer", () => {
+  it('holds a car rental for its stored hours, plus the buffer', () => {
     expect(holdUntil(pickup, 30, 8).toISOString()).toBe('2026-11-20T10:00:00.000Z'); // 10:30 + 8 h + 30 min
+  });
+
+  it('holds a new car rental for the flat 11 hours, plus the buffer', () => {
+    expect(RENTAL_HOURS).toBe(11);
+    expect(holdUntil(pickup, 30, RENTAL_HOURS).toISOString()).toBe('2026-11-20T13:00:00.000Z'); // 22:00 Tokyo
   });
 
   it('crosses midnight like any other time', () => {

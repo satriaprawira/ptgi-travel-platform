@@ -14,7 +14,7 @@ import {
 import type { ConfirmBookingDto } from './dto/confirm-booking.dto.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
 import type { RescheduleBookingDto, ReschedulePreviewQueryDto } from './dto/reschedule-booking.dto.js';
-import { holdUntil as holdUntilFor } from './hold.js';
+import { RENTAL_HOURS, holdUntil as holdUntilFor } from './hold.js';
 
 /** What staff see before moving a booking to another time (FT-10). */
 export interface ReschedulePreview {
@@ -75,8 +75,8 @@ export class BookingsService {
     if (rental && (dto.airportId || dto.serviceRegionId || dto.vehicleTypeId || dto.direction || dto.terminal)) {
       throw new UnprocessableEntityException('Airport, area, vehicle type, direction and terminal are only for airport trips');
     }
-    if (!rental && (dto.vehicleClassId || dto.dropoffAddress || dto.rentalHours)) {
-      throw new UnprocessableEntityException('Car category, drop-off address and rental hours are only for other trips');
+    if (!rental && (dto.vehicleClassId || dto.dropoffAddress)) {
+      throw new UnprocessableEntityException('Car category and drop-off address are only for other trips');
     }
 
     // Validates the trip (fare exists or car category offered, pickup in the future, add-on limits).
@@ -84,7 +84,6 @@ export class BookingsService {
       ? await this.pricing.quoteRental(
           {
             vehicleClassId: dto.vehicleClassId!,
-            rentalHours: dto.rentalHours!,
             paymentMethodId: dto.paymentMethodId,
             pickupDate: dto.pickupDate,
             pickupTime: dto.pickupTime,
@@ -116,8 +115,9 @@ export class BookingsService {
 
     const pickupAt = tokyoInstant(dto.pickupDate, dto.pickupTime)!; // already validated by the quote
     const { bufferMinutes } = await this.settings.get();
-    // A car rental holds the car for the hours asked for; a transfer for the standard hold.
-    const holdUntil = holdUntilFor(pickupAt, bufferMinutes, rental ? dto.rentalHours : undefined);
+    // A car rental holds the car for its flat-rate hours; a transfer for the standard hold.
+    const rentalHours = rental ? RENTAL_HOURS : null;
+    const holdUntil = holdUntilFor(pickupAt, bufferMinutes, rentalHours ?? undefined);
 
     const id = await this.db.transaction(async (client) => {
       await this.bookings.lockVehicleClass(client, vehicleClass.id);
@@ -134,6 +134,7 @@ export class BookingsService {
         // A customer who asked for the waiting list still gets a normal booking if a car is free.
         status: free ? 'new' : 'waitlisted',
         vehicleClassId: vehicleClass.id,
+        rentalHours,
         pickupAt,
         holdUntil,
         bufferMinutes,

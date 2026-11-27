@@ -5,7 +5,7 @@ import { countryCodes, countrySuggestions } from "@/lib/options";
 import { createBooking, type BookingReceipt, type BookingRequest, type TripType } from "@/lib/api/bookings";
 import { ApiError } from "@/lib/api/client";
 import { paymentLabel, placeName, surchargeBadge, yen } from "@/lib/api/format";
-import { requestQuote, requestRentalQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
+import { RENTAL_HOURS, requestQuote, requestRentalQuote, type Quote, type ReservationOptions } from "@/lib/api/reservation";
 import {
   ESTIMATE_NOTE,
   LUGGAGE_GUIDE,
@@ -30,9 +30,6 @@ interface AgeGroups {
 }
 
 export type Direction = "from-airport" | "to-airport";
-
-/** Hours a car can be rented for on an "Others" trip (FT-4). */
-const RENTAL_HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 /** Pieces per luggage size: up to this many can be chosen in each box. */
 const MAX_PER_SIZE = 10;
@@ -60,7 +57,6 @@ interface FormState {
   terminal: string;
   /** Car rentals only. */
   dropoffAddress: string;
-  rentalHours: number;
   vehicleClassId: string;
   countryOrigin: string;
   hasFlightCode: "yes" | "no";
@@ -96,7 +92,6 @@ const initialState = (options: ReservationOptions): FormState => ({
   address: "",
   terminal: "",
   dropoffAddress: "",
-  rentalHours: 3,
   vehicleClassId: options.vehicleClasses[0]?.id ?? "",
   countryOrigin: "",
   hasFlightCode: "yes",
@@ -149,7 +144,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
 
   // Live price: re-quote whenever a price-relevant field changes. Debounced, and a newer request
   // cancels the older one so a slow response can never overwrite a fresher price.
-  const { tripType, airportId, serviceRegionId, vehicleTypeId, vehicleClassId, rentalHours } = form;
+  const { tripType, airportId, serviceRegionId, vehicleTypeId, vehicleClassId } = form;
   const { paymentMethodId, pickupDate, pickupTime } = form;
   const addOnsKey = JSON.stringify(form.addOns);
   useEffect(() => {
@@ -174,7 +169,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
       }));
       (rental
         ? requestRentalQuote(
-            { vehicleClassId, rentalHours, paymentMethodId, pickupDate, pickupTime, addOns },
+            { vehicleClassId, paymentMethodId, pickupDate, pickupTime, addOns },
             controller.signal,
           )
         : requestQuote(
@@ -199,7 +194,6 @@ export default function ReservationForm({ options }: { options: ReservationOptio
     serviceRegionId,
     vehicleTypeId,
     vehicleClassId,
-    rentalHours,
     paymentMethodId,
     pickupDate,
     pickupTime,
@@ -225,7 +219,6 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         | "direction"
         | "vehicleClassId"
         | "dropoffAddress"
-        | "rentalHours"
         | "terminal"
         | "flightCode"
       > =
@@ -243,7 +236,6 @@ export default function ReservationForm({ options }: { options: ReservationOptio
               tripType: "other",
               vehicleClassId: form.vehicleClassId,
               dropoffAddress: form.dropoffAddress,
-              rentalHours: form.rentalHours,
               terminal: null,
               flightCode: null,
             };
@@ -492,7 +484,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
               {rental && (
                 <div>
                   <dt>Car rental</dt>
-                  <dd>{hoursText(form.rentalHours)}</dd>
+                  <dd>{hoursText(RENTAL_HOURS)}</dd>
                 </div>
               )}
               <div className="wide">
@@ -683,24 +675,6 @@ export default function ReservationForm({ options }: { options: ReservationOptio
                   <option value="other">Others</option>
                 </select>
               </div>
-              {rental && (
-                <div className="field">
-                  <label htmlFor="rentalHours">
-                    How long do you need the car? <span className="req">*</span>
-                  </label>
-                  <select
-                    id="rentalHours"
-                    value={form.rentalHours}
-                    onChange={(e) => update("rentalHours", Number(e.target.value))}
-                  >
-                    {RENTAL_HOURS.map((hours) => (
-                      <option key={hours} value={hours}>
-                        {hoursText(hours)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             <div className="route-box">
@@ -1165,7 +1139,7 @@ export default function ReservationForm({ options }: { options: ReservationOptio
         fullName={form.fullName}
         origin={rental ? placeName(form.address) || undefined : fromAirport ? airport?.name : region?.name}
         destination={rental ? placeName(form.dropoffAddress) || undefined : fromAirport ? region?.name : airport?.name}
-        rentalHours={rental ? form.rentalHours : undefined}
+        rentalHours={rental ? RENTAL_HOURS : undefined}
         pickupDate={form.pickupDate}
         pickupTime={form.pickupTime}
         hasFlightCode={form.hasFlightCode}

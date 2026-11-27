@@ -20,7 +20,6 @@ export interface BookingRequest {
   /** Other trips (car rental) only. */
   vehicleClassId?: string;
   dropoffAddress?: string;
-  rentalHours?: number;
   paymentMethodId: string;
   pickupDate: string;
   pickupTime: string;

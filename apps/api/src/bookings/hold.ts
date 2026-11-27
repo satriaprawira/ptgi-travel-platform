@@ -4,11 +4,18 @@
  */
 export const HOLD_HOURS = 3;
 
+/**
+ * A car rental ("Others" trip, FT-4) is one flat-rate hire of up to 11 hours, however long the customer
+ * needs the car, so every rental is stored with and holds the car for these hours. Rentals booked before
+ * this rule keep the hours they were booked with.
+ */
+export const RENTAL_HOURS = 11;
+
 const MINUTE_MS = 60_000;
 
 /**
  * When the car is free again: pickup + the trip's hours + the buffer between bookings (FT-12). Airport
- * transfers take HOLD_HOURS; a car rental ("Others" trip, FT-4) the hours the customer asked for.
+ * transfers take HOLD_HOURS; a car rental its stored rental hours (RENTAL_HOURS for new rentals).
  * Capacity checks and the vehicle / driver no-overlap rules use this, so the buffer is part of every
  * conflict check. Pure: tested in hold.spec.ts.
  */

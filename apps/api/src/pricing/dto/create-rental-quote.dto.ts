@@ -1,17 +1,12 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsUUID, Matches, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsOptional, IsUUID, Matches, ValidateNested } from 'class-validator';
 import { AddOnSelectionDto } from './create-quote.dto.js';
 
-/** A car rental for an "Others" trip (FT-4): a car category for some hours, priced by staff. */
+/** A car rental for an "Others" trip (FT-4): a car category for the flat-rate hours, priced by staff. */
 export class CreateRentalQuoteDto {
   /** The car category (vehicle class) the customer wants. */
   @IsUUID()
   vehicleClassId: string;
-
-  @IsInt()
-  @Min(1)
-  @Max(12)
-  rentalHours: number;
 
   @IsUUID()
   paymentMethodId: string;

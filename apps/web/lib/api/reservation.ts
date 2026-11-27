@@ -93,10 +93,15 @@ export const getReservationOptions = () => apiRequest<ReservationOptions>("/rese
 export const requestQuote = (request: QuoteRequest, signal?: AbortSignal) =>
   apiRequest<Quote>("/quotes", { method: "POST", body: request, signal });
 
+/**
+ * Every car rental ("Others" trip) is one flat-rate hire of up to this many hours, however long the customer
+ * needs the car. The API decides it (RENTAL_HOURS in apps/api/src/bookings/hold.ts); the form only shows it.
+ */
+export const RENTAL_HOURS = 11;
+
 /** A car rental for an "Others" trip: staff quote the rental; extras and the payment fee are priced. */
 export interface RentalQuoteRequest {
   vehicleClassId: string;
-  rentalHours: number;
   paymentMethodId: string;
   pickupDate: string;
   pickupTime: string;
